@@ -45,6 +45,18 @@ function readCommon() {
   plan.publication = { description: $("description").value, keywords: $("keywords").value.split(/[,，]/).map(s => s.trim()).filter(Boolean) };
   syncJSON();
 }
+async function saveCurrent() {
+  readCommon();
+  const result = await api(project ? `/workbench/projects/${project.id}` : "/workbench/projects", { plan });
+  project = await api(`/workbench/projects/${result.id}`);
+  plan = await api(`/workbench/projects/${project.id}/plan`);
+  return project;
+}
+async function segmentTask(button, work) {
+  button.disabled = true;
+  try { await work(); } catch (error) { notice(error.message, true); }
+  finally { button.disabled = false; }
+}
 function showPlan(value, reset = false) {
   if (reset) { activePart = 0; selectTab("script"); }
   plan = value; $("start").hidden = true; $("editor").hidden = false;
@@ -80,6 +92,52 @@ function renderPart() {
     if (plan.mode === "talkinghead") {
       field(row, "金句（可留空）", part.quote, v => { if (v) part.quote = v; else { delete part.quote; delete part.emphasis; } });
       field(row, "高亮词", part.emphasis, v => { part.emphasis = v; });
+      const tools = document.createElement("div"); tools.className = "segment-tools";
+      const quote = document.createElement("button"); quote.type = "button"; quote.textContent = "AI 提炼金句";
+      quote.onclick = () => segmentTask(quote, async () => {
+        if (!await ask("把这一段口播词发送给所选文本模型提炼金句？可能产生费用。")) return;
+        await saveCurrent();
+        const result = await api(`/workbench/projects/${project.id}/suggest-quote`, { partId: part.id, provider: $("provider").value });
+        const current = parts().find(item => item.id === part.id);
+        current.quote = result.quote; current.emphasis = result.emphasis;
+        showPlan(plan); showFiles(); await refresh(); notice("金句已填入，请核对并保存工程。");
+      }); tools.append(quote); row.append(tools);
+      const prompt = field(row, "图片提示词（可手动填写）", part.imagePrompt || part.image?.prompt || "", v => { part.imagePrompt = v; }, true);
+      prompt.placeholder = "描述需要的示意画面；不要把生成图当作真实项目截图";
+      const imageTools = document.createElement("div"); imageTools.className = "segment-tools";
+      const rewrite = document.createElement("button"); rewrite.type = "button"; rewrite.textContent = "从口播词改写提示词";
+      rewrite.onclick = () => segmentTask(rewrite, async () => {
+        if (!await ask("把这一段口播词发送给所选文本模型，改写为图片提示词？可能产生费用。")) return;
+        await saveCurrent();
+        const result = await api(`/workbench/projects/${project.id}/suggest-image-prompt`, { partId: part.id, provider: $("provider").value });
+        prompt.value = result.prompt; parts().find(item => item.id === part.id).imagePrompt = result.prompt; syncJSON();
+        notice("提示词已生成，可以修改后再决定是否生成图片。");
+      }); imageTools.append(rewrite);
+      const generate = document.createElement("button"); generate.type = "button"; generate.textContent = "生成图片";
+      generate.onclick = () => segmentTask(generate, async () => {
+        const value = prompt.value.trim(); if (!value) throw new Error("请填写图片提示词，或先从口播词改写");
+        if (!await ask("先保存当前工程，再把提示词发给 MiniMax image-01 生成一张示意图？这会产生模型费用；原图只保存在本机工程，打包时嵌入工程文件。")) return;
+        await saveCurrent();
+        await api(`/workbench/projects/${project.id}/generate-image`, { partId: part.id, prompt: value, aspectRatio: ratio.value });
+        project = await api(`/workbench/projects/${project.id}`);
+        showPlan(await api(`/workbench/projects/${project.id}/plan`)); showFiles(); await refresh();
+        notice("图片已保存到工程 assets 并嵌入可导入工程。请预览确认，生成图不能当作真实证据。");
+      }); imageTools.append(generate);
+      const ratioLabel = document.createElement("label"); ratioLabel.textContent = "比例"; ratioLabel.className = "ratio-label";
+      const ratio = document.createElement("select");
+      for (const value of ["16:9", "9:16"]) { const option = document.createElement("option"); option.value = value; option.textContent = value; ratio.append(option); }
+      ratioLabel.append(ratio); imageTools.append(ratioLabel); row.append(imageTools);
+      if (part.image && project) {
+        const preview = document.createElement("div"); preview.className = "segment-image";
+        const img = document.createElement("img"); img.alt = `第 ${i + 1} 段生成的示意图`; img.src = `/workbench/projects/${project.id}/asset?name=${encodeURIComponent(part.image.filename)}`;
+        preview.append(img);
+        const removeImage = document.createElement("button"); removeImage.type = "button"; removeImage.textContent = "移除这张图";
+        removeImage.onclick = () => segmentTask(removeImage, async () => {
+          if (!await ask("从工程中移除这一段的图片？图片不会影响 Downloads 中的原片。")) return;
+          project = await api(`/workbench/projects/${project.id}/remove-image`, { partId: part.id });
+          showPlan(await api(`/workbench/projects/${project.id}/plan`)); showFiles(); notice("图片已从工程中移除。");
+        }); preview.append(removeImage); row.append(preview);
+      }
     } else {
       const label = document.createElement("label"); label.textContent = "镜头"; const select = document.createElement("select");
       for (const [v, t] of [["camera-full", "真人全屏"], ["split", "上白板 · 下真人"], ["board-pip", "白板 · 角落真人"]]) { const option = document.createElement("option"); option.value = v; option.textContent = t; select.append(option); }
@@ -92,6 +150,14 @@ function renderPart() {
         field(row, "白板大字", part.board.headline, v => { part.board.headline = v; }, true);
         field(row, "图示项（每行一项）", part.board.items.join("\n"), v => { part.board.items = v.split("\n").map(s => s.trim()).filter(Boolean); }, true);
         field(row, "页面总结", part.board.footer, v => { part.board.footer = v; });
+        const quote = document.createElement("button"); quote.type = "button"; quote.textContent = "AI 提炼本页金句";
+        quote.onclick = () => segmentTask(quote, async () => {
+          if (!await ask("把本页口播词发送给所选文本模型提炼金句？可能产生费用。")) return;
+          await saveCurrent();
+          const result = await api(`/workbench/projects/${project.id}/suggest-quote`, { partId: part.id, provider: $("provider").value });
+          parts().find(item => item.id === part.id).board.footer = Array.from(result.quote).slice(0, 50).join("");
+          showPlan(plan); showFiles(); await refresh(); notice("金句已放入白板页面总结，请核对后保存。");
+        }); row.append(quote);
       }
     }
     field(row, "镜头 / 素材说明", part.shot, v => { part.shot = v; }, true);
@@ -125,8 +191,7 @@ action("generate", async () => {
   const result = await api("/workbench/generate", input()); project = null; showPlan(result.plan, true); notice("模型草稿已通过结构校验；事实、素材和表达仍需你确认。");
 });
 action("save", async () => {
-  readCommon(); const result = await api(project ? `/workbench/projects/${project.id}` : "/workbench/projects", { plan });
-  project = await api(`/workbench/projects/${result.id}`); showPlan(await api(`/workbench/projects/${project.id}/plan`)); showFiles(); await refresh(); notice("工程已保存。图片等素材可在 OneTake 导入后继续添加；当前生成器只制作文字和图示。");
+  await saveCurrent(); showPlan(plan); showFiles(); await refresh(); notice("工程已保存；已生成图片会随可导入工程一起保存。");
 });
 action("apply-json", async () => { const value = JSON.parse($("plan-json").value); if (!value.publication || !Array.isArray(value[value.mode === "whiteboard" ? "pages" : "segments"])) throw new Error("不是工作台草稿格式，请选择 content-plan.json"); showPlan(value); notice("已应用，保存时会校验并打包。"); });
 $("plan-file").onchange = async e => { try { const file = e.target.files[0]; if (!file) return; if (file.size > 2 * 1024 * 1024) throw new Error("草稿文件过大"); $("plan-json").value = await file.text(); $("apply-json").click(); } catch(e) { notice(e.message, true); } finally { e.target.value = ""; } };
@@ -143,6 +208,13 @@ action("import-project", async () => {
 });
 action("download-project", async () => { const a = document.createElement("a"); a.href = `/workbench/projects/${project.id}/file?name=project.onetake.json`; a.download = `${project.title}.onetake.json`; a.click(); });
 action("open-folder", async () => { await api(`/workbench/projects/${project.id}/open-folder`, {}); });
+action("trash-project", async () => {
+  if (!project) return;
+  if (!await ask(`把《${project.title}》整个工程移到工作台回收区？工程内的图片、原片副本和成片会一起移动；Downloads 中引用的原片不会删除。可从 .trash 目录手动恢复。`)) return;
+  await api(`/workbench/projects/${project.id}/trash`, {});
+  project = null; plan = null; $("editor").hidden = true; $("start").hidden = false;
+  await refresh(); notice("工程已移到工作台 .trash，可从该目录手动恢复；Downloads 原片未删除。");
+});
 $("recording-file").onchange = async e => { try { const file = e.target.files[0]; if (!file) return; await api("/workbench/recordings/register", { projectId: project.id, filename: file.name, size: file.size }); project = await api(`/workbench/projects/${project.id}`); showFiles(); notice("已关联本机原片，只发送名称和大小，没有传视频。"); } catch(e) { notice(e.message, true); } finally { e.target.value = ""; } };
 async function refreshModelStatus() {
   const result = await api("/status");

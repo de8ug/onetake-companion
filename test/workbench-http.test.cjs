@@ -10,7 +10,8 @@ test("local UI is free, denies CSRF and exposes only origin-bound project ticket
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "workbench-http-"));
   const reserved = http.createServer(); await new Promise(r => reserved.listen(0, "127.0.0.1", r));
   const port = reserved.address().port; await new Promise(r => reserved.close(r));
-  const { server } = createServer({ port, home: path.join(tmp, "home"), workspaceRoot: path.join(tmp, "projects"), generate: async () => ({ model: "mock", data: { choices: [{ message: { content: JSON.stringify(seedPlan("whiteboard")) } }] } }) });
+  const imageBytes = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), Buffer.alloc(120)]);
+  const { server } = createServer({ port, home: path.join(tmp, "home"), workspaceRoot: path.join(tmp, "projects"), generate: async () => ({ model: "mock", data: { choices: [{ message: { content: JSON.stringify(seedPlan("whiteboard")) } }] } }), suggestQuote: async () => ({ quote: "先讲具体例子", emphasis: "具体例子" }), suggestImagePrompt: async () => ({ prompt: "一张具体的示意图" }), generateImage: async () => ({ bytes: imageBytes, mime: "image/png", prompt: "一张具体的示意图" }) });
   await new Promise(r => server.listen(port, "127.0.0.1", r));
   const base = `http://127.0.0.1:${port}`;
   try {
@@ -22,6 +23,18 @@ test("local UI is free, denies CSRF and exposes only origin-bound project ticket
     assert.equal((await post("/workbench/seed", {}, "https://onetake.show")).status, 401);
     const draft = await (await post("/workbench/seed", { mode: "whiteboard" })).json();
     const project = await (await post("/workbench/projects", { plan: draft.plan })).json(); assert.match(project.id, /^[a-f0-9-]{36}$/);
+    const quote = await (await post(`/workbench/projects/${project.id}/suggest-quote`, { partId: "intro", provider: "minimax" })).json(); assert.equal(quote.quote, "先讲具体例子");
+    const prompt = await (await post(`/workbench/projects/${project.id}/suggest-image-prompt`, { partId: "intro", provider: "minimax" })).json(); assert.match(prompt.prompt, /示意图/);
+    assert.equal((await post(`/workbench/projects/${project.id}/generate-image`, { partId: "intro", prompt: "一张具体的示意图" })).status, 422);
+    const talking = await (await post("/workbench/projects", { plan: seedPlan("talkinghead") })).json();
+    const image = await (await post(`/workbench/projects/${talking.id}/generate-image`, { partId: "part-1", prompt: "一张具体的示意图" })).json();
+    assert.match(image.filename, /^[a-f0-9-]{36}\.png$/);
+    const asset = await fetch(`${base}/workbench/projects/${talking.id}/asset?name=${image.filename}`, { headers: { Cookie: cookie } });
+    assert.equal(asset.status, 200); assert.deepEqual(Buffer.from(await asset.arrayBuffer()), imageBytes);
+    assert.equal((await fetch(`${base}/workbench/projects/${talking.id}/asset?name=../secret`, { headers: { Cookie: cookie } })).status, 404);
+    assert.equal((await post(`/workbench/projects/${talking.id}/remove-image`, { partId: "part-1" })).status, 200);
+    assert.equal((await post(`/workbench/projects/${talking.id}/trash`, {})).status, 200);
+    assert.equal((await fetch(`${base}/workbench/projects/${talking.id}`, { headers: { Cookie: cookie } })).status, 500);
     assert.equal((await post("/quick-edit/analyze-silence", {})).status, 403);
     const generated = await post("/workbench/generate", { mode: "whiteboard", provider: "minimax", topic: "表达", audience: "普通人" }); assert.equal(generated.status, 200);
     assert.equal((await post(`/workbench/projects/${project.id}/handoff`, { target: "https://evil.example" })).status, 500);

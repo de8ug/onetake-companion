@@ -2,7 +2,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const assert = require("node:assert/strict");
 
-const [input, output] = process.argv.slice(2);
+const [input, output, assetsDir] = process.argv.slice(2);
 if (!input || !output) throw new Error("Usage: build-project.cjs <content-plan.json> <output-directory>");
 const plan = JSON.parse(fs.readFileSync(input, "utf8"));
 const now = Date.now();
@@ -33,6 +33,18 @@ if (plan.mode === "talkinghead") {
       const id = `quote-${part.id}`;
       assets.push({ id, type: "text", title: part.quote, text: part.quote, emphasis: part.emphasis || "", presentation: "quote", source: "upload" });
       cues.push({ id: `cue-${part.id}`, assetId: id, atProgress: 0, durationSeconds: 5 });
+    }
+    if (part.image) {
+      assert(assetsDir && /^[a-f0-9-]{36}\.(png|jpg)$/.test(part.image.filename));
+      const file = path.join(assetsDir, part.image.filename);
+      assert(fs.lstatSync(file).isFile());
+      const bytes = fs.readFileSync(file);
+      const mime = part.image.filename.endsWith(".png") ? "image/png" : "image/jpeg";
+      assert(bytes.length >= 100 && bytes.length <= 3_000_000);
+      assert(mime === "image/png" ? bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) : bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff);
+      const id = `image-${part.id}`;
+      assets.push({ id, type: "image", title: part.role, imageDataUrl: `data:${mime};base64,${bytes.toString("base64")}`, source: "upload" });
+      cues.push({ id: `image-cue-${part.id}`, assetId: id, atProgress: 0, durationSeconds: Math.min(8, part.seconds) });
     }
     return {
       id: part.id, order: i + 1, script: { zh: part.text, en: "" },

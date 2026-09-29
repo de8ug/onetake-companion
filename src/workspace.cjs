@@ -46,7 +46,7 @@ function createWorkspace(options = {}) {
     const folder = dir(id), pending = fs.mkdtempSync(path.join(folder, ".build-"));
     try {
       const input = path.join(pending, "input.json"); writeJson(input, plan);
-      await run(process.execPath, [path.join(__dirname, "build-project.cjs"), input, pending], { timeout: 15000, maxBuffer: 1024 * 1024 });
+      await run(process.execPath, [path.join(__dirname, "build-project.cjs"), input, pending, path.join(folder, "assets")], { timeout: 15000, maxBuffer: 1024 * 1024 });
       for (const name of ["project.onetake.json", "content-plan.json", "录制稿与分镜.md", "发布词.md", "来源与核验.md", "preview.html"]) {
         fs.renameSync(path.join(pending, name), path.join(folder, name));
       }
@@ -67,6 +67,52 @@ function createWorkspace(options = {}) {
     if (!["project.onetake.json", "content-plan.json", "发布词.md", "录制稿与分镜.md", "来源与核验.md"].includes(name)) throw new Error("文件不可访问");
     const file = path.join(dir(id), name); if (!fs.lstatSync(file).isFile()) throw new Error("文件无效");
     return fs.readFileSync(file);
+  }
+  function imagePart(plan, partId) {
+    const part = plan.mode === "talkinghead" && plan.segments?.find(item => item.id === partId);
+    if (!part) throw new Error("只支持为口播工程现有段落添加图片");
+    return part;
+  }
+  async function attachImage(id, partId, prompt, image) {
+    const plan = JSON.parse(read(id, "content-plan.json"));
+    const part = imagePart(plan, partId);
+    if (!image || !Buffer.isBuffer(image.bytes) || !["image/png", "image/jpeg"].includes(image.mime) || image.bytes.length < 100 || image.bytes.length > 3_000_000) throw new Error("图片数据无效");
+    const isPng = image.bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    const isJpeg = image.bytes[0] === 0xff && image.bytes[1] === 0xd8 && image.bytes[2] === 0xff;
+    if (image.mime === "image/png" ? !isPng : !isJpeg) throw new Error("图片内容与格式不符");
+    const filename = `${crypto.randomUUID()}.${image.mime === "image/png" ? "png" : "jpg"}`;
+    const file = path.join(dir(id), "assets", filename);
+    const previous = part.image?.filename;
+    fs.writeFileSync(file, image.bytes, { flag: "wx", mode: 0o600 });
+    try { part.image = { filename, prompt }; part.imagePrompt = prompt; await pack(plan, id); }
+    catch (error) { fs.rmSync(file, { force: true }); throw error; }
+    if (previous && /^[a-f0-9-]{36}\.(png|jpg)$/.test(previous)) fs.rmSync(path.join(dir(id), "assets", previous), { force: true });
+    return { filename, project: get(id) };
+  }
+  async function removeImage(id, partId) {
+    const plan = JSON.parse(read(id, "content-plan.json"));
+    const part = imagePart(plan, partId);
+    if (!part.image) throw new Error("这段没有图片");
+    const filename = part.image.filename;
+    delete part.image;
+    await pack(plan, id);
+    fs.rmSync(path.join(dir(id), "assets", filename), { force: true });
+    return get(id);
+  }
+  function image(id, filename) {
+    if (!/^[a-f0-9-]{36}\.(png|jpg)$/.test(filename)) throw new Error("图片编号无效");
+    const plan = JSON.parse(read(id, "content-plan.json"));
+    if (!plan.segments?.some(part => part.image?.filename === filename)) throw new Error("图片未关联此工程");
+    const file = path.join(dir(id), "assets", filename);
+    if (!fs.lstatSync(file).isFile()) throw new Error("图片文件无效");
+    return { bytes: fs.readFileSync(file), mime: filename.endsWith(".png") ? "image/png" : "image/jpeg" };
+  }
+  function trash(id) {
+    const manifest = get(id), folder = dir(id);
+    const bin = ordinaryDirectory(path.join(root, ".trash"));
+    fs.renameSync(folder, path.join(bin, `${Date.now()}-${path.basename(folder)}`));
+    for (const [key, ticket] of tickets) if (ticket.id === id) tickets.delete(key);
+    return { id: manifest.id, title: manifest.title, trashDirectory: bin };
   }
   function handoff(id, target) {
     get(id);
@@ -130,6 +176,6 @@ function createWorkspace(options = {}) {
   async function openFolder(id) {
     const folder = dir(id); await run(process.platform === "darwin" ? "open" : process.platform === "win32" ? "explorer.exe" : "xdg-open", [folder], { timeout: 10000 });
   }
-  return { root, downloads, list, get, dir, create, pack, read, handoff, consume, register, recording, importUploaded, findRecording, addExport, exportDirectory, openFolder };
+  return { root, downloads, list, get, dir, create, pack, read, image, attachImage, removeImage, trash, handoff, consume, register, recording, importUploaded, findRecording, addExport, exportDirectory, openFolder };
 }
 module.exports = { createWorkspace, recordingName };

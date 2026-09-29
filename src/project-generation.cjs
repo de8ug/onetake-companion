@@ -29,6 +29,11 @@ function validatePlan(plan) {
     if (result.mode === "talkinghead") {
       part.role = text(p.role || `第 ${index + 1} 段`, "段落名称", 100);
       if (p.quote) { part.quote = text(p.quote, "金句", 120); part.emphasis = typeof p.emphasis === "string" ? p.emphasis.slice(0, 40) : ""; if (part.emphasis && !part.quote.includes(part.emphasis)) throw new Error("重点词必须包含在金句中"); }
+      if (p.imagePrompt !== undefined) part.imagePrompt = typeof p.imagePrompt === "string" ? p.imagePrompt.slice(0, 1500) : "";
+      if (p.image) {
+        if (!p.image || typeof p.image !== "object" || !/^[a-f0-9-]{36}\.(png|jpg)$/.test(p.image.filename)) throw new Error("图片资源编号无效");
+        part.image = { filename: p.image.filename, prompt: text(p.image.prompt, "图片提示词", 1500) };
+      }
     } else {
       if (!["camera-full", "board-pip", "split"].includes(p.camera)) throw new Error("镜头类型无效");
       part.camera = p.camera; part.name = text(p.name || `第 ${index + 1} 页`, "页面名称", 100);

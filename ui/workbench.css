@@ -14,3 +14,9 @@ dialog#settings { padding: 24px; }
 #settings #model-form label { min-width: 0; }
 #editor > .section-heading { position: sticky; top: 0; background: #f7f9fa; z-index: 1; padding: 8px 0; }
 @media(max-width:740px) { #editor-tabs { gap: 16px; } #editor-tabs button { font-size: 13px; } .section-heading h2 { font-size: 15px; } #part-count { display: block; margin-top: 4px; } }
+.segment-tools { display: flex; align-items: end; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
+.segment-tools .ratio-label { width: 90px; margin: 0; }
+.segment-tools button { flex-shrink: 0; }
+.segment-image { margin: 14px 0; display: grid; justify-items: start; gap: 10px; }
+.segment-image img { display: block; max-width: min(100%, 460px); max-height: 320px; object-fit: contain; border: 1px solid #c5d1d6; background: #fff; }
+#trash-project { color: #963c43; }

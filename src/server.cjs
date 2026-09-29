@@ -9,6 +9,7 @@ const textProvider = require("./text-provider.cjs");
 const { generateScript, generateBroll } = require("./talkinghead-draft.cjs");
 const { createWorkspace } = require("./workspace.cjs");
 const { generatePlan, seedPlan } = require("./project-generation.cjs");
+const { suggestQuote, suggestImagePrompt, generateMiniMaxImage } = require("./segment-assist.cjs");
 
 const VERSION = "0.3.0";
 const DEFAULT_ORIGINS = "http://localhost:3001,http://127.0.0.1:3001,https://onetake.show,https://www.onetake.show";
@@ -83,7 +84,7 @@ function createServer(options = {}) {
       });
       if (await handleQuickEditJob(req, res, url, reply)) return;
       if (req.method === "GET" && url.pathname === "/workbench/projects") return reply(200, { projects: library().list(), root: library().root, downloads: library().downloads });
-      const projectRoute = url.pathname.match(/^\/workbench\/projects\/([a-f0-9-]{36})(?:\/(plan|file|handoff|open-folder))?$/);
+      const projectRoute = url.pathname.match(/^\/workbench\/projects\/([a-f0-9-]{36})(?:\/(plan|file|asset|handoff|open-folder|trash|suggest-quote|suggest-image-prompt|generate-image|remove-image))?$/);
       if (projectRoute && req.method === "GET") {
         const id = projectRoute[1];
         if (projectRoute[2] === "plan") return reply(200, JSON.parse(library().read(id, "content-plan.json")));
@@ -91,6 +92,13 @@ function createServer(options = {}) {
           const name = url.searchParams.get("name") || "project.onetake.json";
           const bytes = library().read(id, name);
           res.writeHead(200, { "Content-Type": name.endsWith(".json") ? "application/json" : "text/plain; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" }); return res.end(bytes);
+        }
+        if (projectRoute[2] === "asset") {
+          try {
+            const image = library().image(id, url.searchParams.get("name"));
+            res.writeHead(200, { "Content-Type": image.mime, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
+            return res.end(image.bytes);
+          } catch { return reply(404, { message: "图片不可访问" }); }
         }
         return reply(200, { ...library().get(id), directory: library().dir(id) });
       }
@@ -139,6 +147,30 @@ function createServer(options = {}) {
         const id = projectRoute[1];
         if (projectRoute[2] === "handoff") return reply(200, library().handoff(id, input.target));
         if (projectRoute[2] === "open-folder") { await library().openFolder(id); return reply(200, { ok: true }); }
+        if (projectRoute[2] === "trash") {
+          try { return reply(200, library().trash(id)); }
+          catch { return reply(404, { message: "工程未找到或无法移入回收区" }); }
+        }
+        if (projectRoute[2] === "remove-image") {
+          try { return reply(200, await library().removeImage(id, input.partId)); }
+          catch { return reply(422, { message: "图片未能移除，工程保持原样" }); }
+        }
+        if (["suggest-quote", "suggest-image-prompt", "generate-image"].includes(projectRoute[2])) {
+          const plan = JSON.parse(library().read(id, "content-plan.json"));
+          const part = (plan.mode === "whiteboard" ? plan.pages : plan.segments)?.find(p => p.id === input.partId);
+          if (!part) return reply(404, { message: "未找到这一段，请先保存工程" });
+          if (projectRoute[2] === "suggest-quote" || projectRoute[2] === "suggest-image-prompt") {
+            if (!["minimax", "glm"].includes(input.provider)) return reply(400, { message: "请先选择已配置的文本模型" });
+            try { return reply(200, projectRoute[2] === "suggest-quote" ? await (options.suggestQuote || suggestQuote)(part, input.provider) : await (options.suggestImagePrompt || suggestImagePrompt)(part, input.provider)); }
+            catch { return reply(422, { message: "模型未能生成适合这段的内容，请检查配置或手动填写" }); }
+          }
+          if (plan.mode !== "talkinghead") return reply(422, { message: "图片目前只支持口播工程；白板仍可手工加入画面" });
+          if (typeof input.prompt !== "string" || !input.prompt.trim() || input.prompt.length > 1500) return reply(400, { message: "请填写 1 至 1500 字的图片提示词" });
+          try {
+            const image = await (options.generateImage || generateMiniMaxImage)(input.prompt, input.aspectRatio);
+            return reply(200, await library().attachImage(id, input.partId, image.prompt, image));
+          } catch { return reply(422, { message: "MiniMax 图片生成或保存失败；原工程与原图未更改。请检查图片权限、余额和提示词" }); }
+        }
         try { return reply(200, await library().pack(input.plan, id)); }
         catch { return reply(422, { message: "修改内容未通过结构校验，原工程已保留" }); }
       }
