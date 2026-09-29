@@ -21,6 +21,12 @@ Only loopback. Default port 3010. Exact Host and Origin checks. Data routes requ
 | GET/POST | /workbench/projects/:id | Read manifest / update and repack authored plan |
 | GET | /workbench/projects/:id/plan | Editable content-plan JSON |
 | GET | /workbench/projects/:id/file?name=… | Allowlisted project or note file, not arbitrary filesystem access |
+| GET | /workbench/projects/:id/asset?name=… | Referenced local generated image, not arbitrary files |
+| POST | /workbench/projects/:id/suggest-quote | Personal-key editable quote for an existing segment/page |
+| POST | /workbench/projects/:id/suggest-image-prompt | Personal-key editable image prompt for a talking-head segment |
+| POST | /workbench/projects/:id/generate-image | Explicit MiniMax image-01 call; save image and repack portable project |
+| POST | /workbench/projects/:id/remove-image | Remove one talking-head image and repack |
+| POST | /workbench/projects/:id/trash | Move a complete project to the library `.trash` folder |
 | POST | /workbench/projects/:id/handoff | Target local or production; return one-use scoped import URL |
 | GET | /workbench/import | Target-origin-bound `X-OneTake-Import` ticket; exception to full pairing |
 | POST | /workbench/projects/:id/open-folder | Explicit native folder opening |

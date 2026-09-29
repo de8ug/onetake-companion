@@ -2,6 +2,8 @@
 
 Lightweight local finishing tools for OneTake. No OneTake source checkout, web renderer, cloud media storage, npm dependencies, or bundled model account required.
 
+For the complete creator workflow, pairing/editing steps, project recovery, and the exact migration boundary from the earlier assistant, see [中文使用指南](USER_GUIDE.zh-CN.md).
+
 ## Responsibility
 
 - Skill or manual authoring: research, conversational script, assets, complete editable projects.
@@ -53,7 +55,7 @@ Options: `{"cuts":[{"start":2,"end":4,"enabled":true}],"outputName":"topic_OneTa
 
 ## Privacy And Limits
 
-Media never goes through the OneTake online backend. The web adapter uses exact recorded filename/size in Downloads when possible; otherwise it receives one local upload and retains a private original copy for later cover changes. Only user-requested draft text and the selected personal key go to the model provider. License checks send a license token to the configured authorization service, not media or model keys.
+Media never goes through the OneTake online backend. The web adapter uses exact recorded filename/size in Downloads when possible; otherwise it receives one local upload and retains a private original copy for later cover changes. Only explicitly requested draft text or image prompts and the selected personal key go to the model provider. License checks send a license token to the configured authorization service, not media or model keys.
 
 Private state, logs, imported copies and exported files are not automatically deleted. Keys are local plaintext protected by filesystem permissions, not encrypted storage or a system keychain. Windows ACL hardening and signed installation remain separate work. See [SECURITY.md](SECURITY.md) and [API.md](API.md).
 
