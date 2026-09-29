@@ -16,6 +16,8 @@ Start the launcher, then open `http://127.0.0.1:3010`. The same-origin local UI 
 
 ## Local Files And Import
 
+The editor uses four tabs: script, cover/publication, import/video and advanced JSON. Scripts are edited one segment at a time with a selector and previous/next buttons. Switching tabs or segments retains in-memory edits; use Save Project to persist them. Model settings open separately in a dialog.
+
 Default library: `~/Documents/OneTake视频工作台` (override `ONETAKE_WORKSPACE_DIR`). Each UUID-indexed project holds the editable `content-plan.json`, portable `project.onetake.json`, script/source/publishing notes, a no-camera `preview.html`, `assets/`, `originals/`, `exports/` and `manifest.json`.
 
 Known Downloads recordings are indexed by exact filename, size and modification time; they are **not copied**. If the browser original is not in the configured Downloads folder, the official editor sends it to loopback once, stores it under that project's `originals/`, then reuses its ID. Cover-only changes do not upload the video again. Originals are never moved out of Downloads or overwritten. Changed/moved files require re-selection. Covers and resulting MP4s are archived in the project's `exports/`; temporary output is removed after the saved export succeeds. The browser does not automatically fetch another full copy of the finished video.

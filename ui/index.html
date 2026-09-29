@@ -5,9 +5,9 @@
 <dialog id="confirmation"><form method="dialog"><h2>请确认</h2><p id="confirmation-message"></p><div class="actions"><button value="cancel">取消</button><button value="yes">继续</button></div></form></dialog>
 <header><strong>OneTake 口播视频工作台</strong><span>本地工程与视频</span><button id="settings-toggle">模型设置</button></header>
 <p id="notice" role="status" aria-live="polite"></p>
-<section id="settings" hidden>
- <h2>我的模型</h2><form id="model-form"><label>服务<select id="provider"><option value="minimax">MiniMax</option><option value="glm">智谱</option></select></label><label>模型名称<input id="model" placeholder="留空使用默认模型"></label><label>API Key<input id="key" type="password" autocomplete="new-password"></label><button>保存到本机</button></form><p id="model-status"></p>
-</section>
+<dialog id="settings">
+ <div class="section-heading"><h2>我的模型</h2><button id="settings-close" aria-label="关闭模型设置">关闭</button></div><form id="model-form"><label>服务<select id="provider"><option value="minimax">MiniMax</option><option value="glm">智谱</option></select></label><label>模型名称<input id="model" placeholder="留空使用默认模型"></label><label>API Key<input id="key" type="password" autocomplete="new-password"></label><button>保存到本机</button></form><p id="model-status"></p>
+</dialog>
 <main><aside><div class="section-heading"><h2>工程</h2><button id="new-project">＋ 新建</button></div><nav id="project-list" aria-label="工程列表"></nav><p id="root-path" class="path"></p></aside>
 <article>
 <section id="start"><h1>新建工程</h1><form id="start-form">
@@ -19,13 +19,27 @@
 <section id="editor" hidden>
  <div class="section-heading"><h1 id="editor-heading">工程草稿</h1><button id="save">保存工程</button></div>
  <label>视频主题<input id="title" maxlength="100"></label><label>一句话核心观点<textarea id="core-point" rows="2" maxlength="1000"></textarea></label>
+ <nav id="editor-tabs" role="tablist" aria-label="工程编辑步骤">
+  <button id="tab-script" role="tab" aria-controls="panel-script" aria-selected="true">分段脚本</button>
+  <button id="tab-publication" role="tab" aria-controls="panel-publication" aria-selected="false" tabindex="-1">封面与发布词</button>
+  <button id="tab-files" role="tab" aria-controls="panel-files" aria-selected="false" tabindex="-1">导入与视频</button>
+  <button id="tab-json" role="tab" aria-controls="panel-json" aria-selected="false" tabindex="-1">高级 JSON</button>
+ </nav>
+ <section id="panel-script" role="tabpanel" aria-labelledby="tab-script">
+ <div class="section-heading"><h2>分段脚本 <small id="part-count"></small></h2><button id="add-part">＋ 添加一段</button></div>
+ <div class="segment-toolbar"><button id="previous-part" aria-label="上一段">←</button><label>当前段落<select id="part-select"></select></label><button id="next-part" aria-label="下一段">→</button></div><div id="parts"></div>
+ </section>
+ <section id="panel-publication" role="tabpanel" aria-labelledby="tab-publication" hidden>
  <div class="columns"><label>封面大字<textarea id="cover-title" rows="2" maxlength="60"></textarea></label><label>封面说明<input id="cover-subtitle" maxlength="100"></label></div>
- <div class="section-heading"><h2>分段脚本</h2><button id="add-part">＋ 添加一段</button></div><div id="parts"></div>
  <h2>发布词</h2><label>描述<textarea id="description" rows="3" maxlength="2000"></textarea></label><label>四个关键词（用逗号分隔）<input id="keywords"></label>
- <details><summary>完整草稿 JSON</summary><textarea id="plan-json" rows="14" spellcheck="false"></textarea><button id="apply-json">应用 JSON</button><label>打开草稿文件<input id="plan-file" type="file" accept="application/json,.json"></label></details>
+ </section>
+ <section id="panel-json" role="tabpanel" aria-labelledby="tab-json" hidden><h2>完整草稿 JSON</h2><textarea id="plan-json" rows="14" spellcheck="false" aria-label="完整草稿 JSON"></textarea><button id="apply-json">应用 JSON</button><label>打开草稿文件<input id="plan-file" type="file" accept="application/json,.json"></label></section>
+ <section id="panel-files" role="tabpanel" aria-labelledby="tab-files" hidden>
+ <p id="unsaved">请先保存工程，再导入 OneTake 或关联原片。</p>
  <section id="saved" hidden><h2>导入与文件</h2><p id="directory" class="path"></p>
  <div class="actions"><label>OneTake 目标<select id="target"><option value="http://127.0.0.1:3001">本地测试版 · 3001</option><option value="https://onetake.show">线上版 · onetake.show</option></select></label><button id="import-project">OneTake 导入</button><button id="download-project">下载工程</button><button id="open-folder">打开工程目录</button></div>
  <h2>原片与成片</h2><label>关联 Downloads 中的原片<input id="recording-file" type="file" accept="video/mp4,video/webm,video/quicktime,.mov"></label><ul id="recordings"></ul><ul id="exports"></ul>
+ </section>
  </section>
 </section>
 </article></main>
