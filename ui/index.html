@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OneTake 口播视频工作台</title><link rel="stylesheet" href="/workbench.css"><script src="/workbench.js" defer></script></head>
+<body>
+<dialog id="confirmation"><form method="dialog"><h2>请确认</h2><p id="confirmation-message"></p><div class="actions"><button value="cancel">取消</button><button value="yes">继续</button></div></form></dialog>
+<header><strong>OneTake 口播视频工作台</strong><span>本地工程与视频</span><button id="settings-toggle">模型设置</button></header>
+<p id="notice" role="status" aria-live="polite"></p>
+<section id="settings" hidden>
+ <h2>我的模型</h2><form id="model-form"><label>服务<select id="provider"><option value="minimax">MiniMax</option><option value="glm">智谱</option></select></label><label>模型名称<input id="model" placeholder="留空使用默认模型"></label><label>API Key<input id="key" type="password" autocomplete="new-password"></label><button>保存到本机</button></form><p id="model-status"></p>
+</section>
+<main><aside><div class="section-heading"><h2>工程</h2><button id="new-project">＋ 新建</button></div><nav id="project-list" aria-label="工程列表"></nav><p id="root-path" class="path"></p></aside>
+<article>
+<section id="start"><h1>新建工程</h1><form id="start-form">
+ <div class="columns"><label>模式<select id="mode"><option value="talkinghead">口播</option><option value="whiteboard">白板</option></select></label><label>预计秒数<input id="seconds" type="number" value="90" min="30" max="600"></label></div>
+ <label>话题<input id="topic" required maxlength="100" placeholder="想跟观众聊什么？"></label><label>目标观众<input id="audience" required value="普通视频创作者" maxlength="500"></label>
+ <label>叙事结构<select id="structure"><option value="problem">问题 → 例子 → 方法</option><option value="comparison">两种选择 → 差异 → 判断标准</option><option value="demonstration">真实任务 → 演示 → 边界与方法</option></select></label>
+ <label>已有事实与材料<textarea id="notes" rows="4" maxlength="12000"></textarea></label><div class="actions"><button type="submit">手工模板</button><button id="generate" type="button">用我的模型生成</button></div>
+</form></section>
+<section id="editor" hidden>
+ <div class="section-heading"><h1 id="editor-heading">工程草稿</h1><button id="save">保存工程</button></div>
+ <label>视频主题<input id="title" maxlength="100"></label><label>一句话核心观点<textarea id="core-point" rows="2" maxlength="1000"></textarea></label>
+ <div class="columns"><label>封面大字<textarea id="cover-title" rows="2" maxlength="60"></textarea></label><label>封面说明<input id="cover-subtitle" maxlength="100"></label></div>
+ <div class="section-heading"><h2>分段脚本</h2><button id="add-part">＋ 添加一段</button></div><div id="parts"></div>
+ <h2>发布词</h2><label>描述<textarea id="description" rows="3" maxlength="2000"></textarea></label><label>四个关键词（用逗号分隔）<input id="keywords"></label>
+ <details><summary>完整草稿 JSON</summary><textarea id="plan-json" rows="14" spellcheck="false"></textarea><button id="apply-json">应用 JSON</button><label>打开草稿文件<input id="plan-file" type="file" accept="application/json,.json"></label></details>
+ <section id="saved" hidden><h2>导入与文件</h2><p id="directory" class="path"></p>
+ <div class="actions"><label>OneTake 目标<select id="target"><option value="http://127.0.0.1:3001">本地测试版 · 3001</option><option value="https://onetake.show">线上版 · onetake.show</option></select></label><button id="import-project">OneTake 导入</button><button id="download-project">下载工程</button><button id="open-folder">打开工程目录</button></div>
+ <h2>原片与成片</h2><label>关联 Downloads 中的原片<input id="recording-file" type="file" accept="video/mp4,video/webm,video/quicktime,.mov"></label><ul id="recordings"></ul><ul id="exports"></ul>
+ </section>
+</section>
+</article></main>
+<footer>OneTake · <a href="https://onetake.show" target="_blank" rel="noreferrer">onetake.show</a><span>工程准备免费 · 官方粗剪＋封面导出 PRO · 模型费用由服务商收取</span></footer>
+</body></html>

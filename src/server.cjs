@@ -7,8 +7,10 @@ const { handleQuickEdit, handleQuickEditJob, hasActiveRender } = require("./quic
 const { loadModelSettings, saveModelSettings } = require("./local-model-settings.cjs");
 const textProvider = require("./text-provider.cjs");
 const { generateScript, generateBroll } = require("./talkinghead-draft.cjs");
+const { createWorkspace } = require("./workspace.cjs");
+const { generatePlan, seedPlan } = require("./project-generation.cjs");
 
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 const DEFAULT_ORIGINS = "http://localhost:3001,http://127.0.0.1:3001,https://onetake.show,https://www.onetake.show";
 const isDevelopment = origin => {
   if (!origin) return true;
@@ -31,6 +33,9 @@ function createServer(options = {}) {
   if (!/^[a-f0-9]{48}$/.test(pairing)) throw new Error("配对文件无效，请备份后重新配对");
   const origins = new Set((options.origins || process.env.ONETAKE_ALLOWED_ORIGINS || DEFAULT_ORIGINS).split(",").map(x => x.trim()).filter(Boolean));
   let busy = false;
+  let workspace;
+  const library = () => workspace || (workspace = createWorkspace({ root: options.workspaceRoot, downloads: options.downloads }));
+  const uiSession = crypto.randomBytes(32).toString("hex");
   const authorize = value => {
     if (typeof value !== "string") return false;
     const a = Buffer.from(value), b = Buffer.from(`Bearer ${pairing}`);
@@ -44,29 +49,56 @@ function createServer(options = {}) {
     };
     if (![`127.0.0.1:${port}`, `localhost:${port}`].includes(req.headers.host)) return reply(403, { message: "Invalid host" });
     const origin = req.headers.origin;
-    if (origin && !origins.has(origin)) return reply(403, { message: "Origin not paired" });
+    const ownOrigin = `http://${req.headers.host}`;
+    if (origin && origin !== ownOrigin && !origins.has(origin)) return reply(403, { message: "Origin not paired" });
     if (origin) { res.setHeader("Access-Control-Allow-Origin", origin); res.setHeader("Vary", "Origin"); }
     if (req.method === "OPTIONS") {
-      res.setHeader("Access-Control-Allow-Headers", "Authorization,Content-Type,X-OneTake-License,X-OneTake-Video-Type,X-OneTake-Cover-Bytes,X-OneTake-Render-Options");
+      res.setHeader("Access-Control-Allow-Headers", "Authorization,Content-Type,X-OneTake-License,X-OneTake-Video-Type,X-OneTake-Cover-Bytes,X-OneTake-Render-Options,X-OneTake-Import");
       res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
       if (origin && req.headers["access-control-request-private-network"] === "true") res.setHeader("Access-Control-Allow-Private-Network", "true");
       res.writeHead(204); return res.end();
     }
-    if (!authorize(req.headers.authorization)) return reply(401, { message: "请输入本地助手配对码" });
+    const url = new URL(req.url, ownOrigin);
+    if (req.method === "GET" && ["/", "/workbench.js", "/workbench.css"].includes(url.pathname)) {
+      if (req.headers["sec-fetch-dest"] === "iframe") return reply(403, { message: "Embedding denied" });
+      if (url.pathname === "/") res.setHeader("Set-Cookie", `onetake-workbench=${uiSession}; HttpOnly; SameSite=Strict; Path=/`);
+      res.writeHead(200, { "Content-Type": url.pathname === "/" ? "text/html; charset=utf-8" : url.pathname.endsWith(".js") ? "text/javascript; charset=utf-8" : "text/css; charset=utf-8", "Cache-Control": "no-store", "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; frame-ancestors 'none'; object-src 'none'; base-uri 'none'" });
+      return res.end(fs.readFileSync(path.join(__dirname, "../ui", url.pathname === "/" ? "index.html" : url.pathname.slice(1))));
+    }
+    if (req.method === "GET" && url.pathname === "/workbench/import") {
+      try { return reply(200, library().consume(req.headers["x-onetake-import"], origin)); }
+      catch { return reply(403, { message: "导入凭证无效、来源不符或已过期，请从工作台重新打开" }); }
+    }
+    const cookie = req.headers.cookie?.split(";").map(x => x.trim()).find(x => x.startsWith("onetake-workbench="))?.slice(18);
+    const localUI = typeof cookie === "string" && cookie.length === uiSession.length && crypto.timingSafeEqual(Buffer.from(cookie), Buffer.from(uiSession)) && (!origin || origin === ownOrigin) && (!req.headers["sec-fetch-site"] || req.headers["sec-fetch-site"] === "same-origin");
+    if (!authorize(req.headers.authorization) && !localUI) return reply(401, { message: "请输入本地助手配对码，或打开本地工作台" });
+    if (localUI && req.method === "POST" && origin !== ownOrigin) return reply(403, { message: "Local UI origin required" });
     let acquired = false;
     try {
-      const url = new URL(req.url, "http://127.0.0.1");
       if (req.method === "GET" && url.pathname === "/status") return reply(200, {
         version: VERSION, busy: busy || hasActiveRender(), quickEditAvailable: true,
         apiConfigured: textProvider.status().some(p => p.configured), textProviders: textProvider.status(),
-        capabilities: { localMedia: true, personalKeyDrafting: true, legacyWhiteboard: false },
+        capabilities: { localMedia: true, personalKeyDrafting: true, projectGeneration: true, workspace: true, legacyWhiteboard: false },
         jobs: [], voiceConfigured: false, avatarConfigured: false,
       });
       if (await handleQuickEditJob(req, res, url, reply)) return;
-      if (url.pathname === "/jobs" || url.pathname.startsWith("/jobs/")) return reply(410, { message: "完整工程请用 Skill 制作；旧白板渲染实验不属于轻量助手。原有项目文件未删除。" });
-      const routes = ["/quick-edit/analyze-silence", "/quick-edit/render", "/model-settings", "/talkinghead/script", "/talkinghead/broll"];
-      if (req.method !== "POST" || !routes.includes(url.pathname)) return reply(404, { message: "Not found" });
+      if (req.method === "GET" && url.pathname === "/workbench/projects") return reply(200, { projects: library().list(), root: library().root, downloads: library().downloads });
+      const projectRoute = url.pathname.match(/^\/workbench\/projects\/([a-f0-9-]{36})(?:\/(plan|file|handoff|open-folder))?$/);
+      if (projectRoute && req.method === "GET") {
+        const id = projectRoute[1];
+        if (projectRoute[2] === "plan") return reply(200, JSON.parse(library().read(id, "content-plan.json")));
+        if (projectRoute[2] === "file") {
+          const name = url.searchParams.get("name") || "project.onetake.json";
+          const bytes = library().read(id, name);
+          res.writeHead(200, { "Content-Type": name.endsWith(".json") ? "application/json" : "text/plain; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" }); return res.end(bytes);
+        }
+        return reply(200, { ...library().get(id), directory: library().dir(id) });
+      }
+      if (url.pathname === "/jobs" || url.pathname.startsWith("/jobs/")) return reply(410, { message: "请用工作台或 Skill 生成工程；旧白板渲染实验不属于轻量工作台。原有项目文件未删除。" });
+      const routes = ["/quick-edit/analyze-silence", "/quick-edit/render", "/model-settings", "/talkinghead/script", "/talkinghead/broll", "/workbench/projects", "/workbench/generate", "/workbench/seed", "/workbench/recordings/register"];
+      if (req.method !== "POST" || !routes.includes(url.pathname) && !projectRoute) return reply(404, { message: "Not found" });
       if (busy || hasActiveRender()) return reply(409, { message: "已有任务运行，请等待" });
+      if (url.pathname.startsWith("/quick-edit/")) {
       const license = req.headers["x-onetake-license"];
       if (typeof license !== "string" || !license.trim()) return reply(403, { message: "需要有效的 PRO 授权" });
       const licenseUrl = options.licenseUrl || process.env.ONETAKE_LICENSE_URL || (isDevelopment(origin) ? "http://127.0.0.1:3005/api/validate-session" : "");
@@ -76,19 +108,40 @@ function createServer(options = {}) {
       const validation = await (options.fetcher || fetch)(licenseUrl, { method: "POST", redirect: "error", headers: { Authorization: `Bearer ${license}` }, signal: AbortSignal.timeout(8000) });
       const valid = await validation.json();
       if (!validation.ok || valid.valid !== true || valid.tier !== "PRO") return reply(403, { message: "PRO 授权无效，请重新激活" });
+      }
       if (busy || hasActiveRender()) return reply(409, { message: "已有任务运行，请等待" });
       busy = true; acquired = true;
-      if (url.pathname.startsWith("/quick-edit/")) return await handleQuickEdit(req, res, url, reply, home);
+      if (url.pathname.startsWith("/quick-edit/")) return await handleQuickEdit(req, res, url, reply, home, library);
       const chunks = []; let bytes = 0;
       for await (const chunk of req) {
         bytes += chunk.length;
-        if (bytes > 65536) return reply(413, { message: "输入过长" });
+        if (bytes > 2 * 1024 * 1024) return reply(413, { message: "输入过长" });
         chunks.push(chunk);
       }
       let input;
       try { input = JSON.parse(Buffer.concat(chunks).toString("utf8")); }
       catch { return reply(400, { message: "JSON 输入无效" }); }
       if (!input || typeof input !== "object" || Array.isArray(input)) return reply(400, { message: "输入格式无效" });
+      if (url.pathname === "/workbench/seed") return reply(200, { plan: seedPlan(input.mode === "whiteboard" ? "whiteboard" : "talkinghead", input.topic || "把想法讲清楚", input.audience || "普通视频创作者", input.structure) });
+      if (url.pathname === "/workbench/generate") {
+        try { return reply(200, await generatePlan(input, options.generate || textProvider.generate)); }
+        catch { return reply(422, { message: "模型调用或工程草稿校验失败；未保存工程，不会自动切换或计费重试。可改用手工模板。" }); }
+      }
+      if (url.pathname === "/workbench/projects") {
+        try { return reply(201, await library().create(input.plan)); }
+        catch { return reply(422, { message: "工程格式或打包失败，请检查段落、金句、图示和四个关键词；不能作为可用工程交付" }); }
+      }
+      if (url.pathname === "/workbench/recordings/register") {
+        try { return reply(200, library().register(input.projectId, input.filename, input.size, localUI)); }
+        catch { return reply(404, { message: "默认下载目录未找到对应原片，请保留原片，在 OneTake 粗剪时传入一次" }); }
+      }
+      if (projectRoute) {
+        const id = projectRoute[1];
+        if (projectRoute[2] === "handoff") return reply(200, library().handoff(id, input.target));
+        if (projectRoute[2] === "open-folder") { await library().openFolder(id); return reply(200, { ok: true }); }
+        try { return reply(200, await library().pack(input.plan, id)); }
+        catch { return reply(422, { message: "修改内容未通过结构校验，原工程已保留" }); }
+      }
       if (url.pathname === "/model-settings") {
         try { return reply(200, saveModelSettings(home, input.provider, input.key, input.model)); }
         catch { return reply(400, { message: "模型配置无效，请检查服务、Key 和私有文件权限" }); }

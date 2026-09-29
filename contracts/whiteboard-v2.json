@@ -1,0 +1,90 @@
+{
+  "type": "onetake-project",
+  "version": 2,
+  "mode": "whiteboard",
+  "beautySettings": {
+    "aspectRatio": "9:16",
+    "cameraShape": "circle",
+    "borderEnabled": false,
+    "borderStyle": "none",
+    "borderColor": "transparent",
+    "pipPosition": "bottom-right",
+    "pipSize": "medium"
+  },
+  "recordingSettings": {
+    "countdownSeconds": 0,
+    "videoQuality": "high"
+  },
+  "scenes": [
+    {
+      "elements": [
+        {
+          "id": "template-background",
+          "angle": 0,
+          "roughness": 0,
+          "opacity": 100,
+          "groupIds": [],
+          "frameId": null,
+          "index": "a0",
+          "boundElements": null,
+          "updated": 1,
+          "link": null,
+          "locked": false,
+          "seed": 1770439676,
+          "version": 1,
+          "versionNonce": 1050445432,
+          "isDeleted": false,
+          "type": "rectangle",
+          "x": 0,
+          "y": 0,
+          "width": 720,
+          "height": 1280,
+          "strokeColor": "#FAF9F5",
+          "backgroundColor": "#FAF9F5",
+          "fillStyle": "solid",
+          "strokeWidth": 0,
+          "strokeStyle": "solid",
+          "roundness": null
+        },
+        {
+          "id": "template-label",
+          "angle": 0,
+          "roughness": 0,
+          "opacity": 100,
+          "groupIds": [],
+          "frameId": null,
+          "index": "a1",
+          "boundElements": null,
+          "updated": 1,
+          "link": null,
+          "locked": false,
+          "seed": 1934735073,
+          "version": 1,
+          "versionNonce": 349673045,
+          "isDeleted": false,
+          "type": "text",
+          "x": 52,
+          "y": 62,
+          "width": 615,
+          "height": 42.5,
+          "strokeColor": "#111111",
+          "backgroundColor": "transparent",
+          "fillStyle": "solid",
+          "strokeWidth": 1,
+          "strokeStyle": "solid",
+          "roundness": null,
+          "text": "OneTake",
+          "fontSize": 34,
+          "fontFamily": 2,
+          "textAlign": "left",
+          "verticalAlign": "top",
+          "baseline": 34,
+          "containerId": null,
+          "originalText": "OneTake",
+          "lineHeight": 1.25,
+          "autoResize": false
+        }
+      ]
+    }
+  ]
+}

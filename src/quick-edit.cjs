@@ -156,8 +156,8 @@ function boundedNumber(value, fallback, min, max) {
   return Number.isFinite(number) ? Math.max(min, Math.min(max, number)) : fallback;
 }
 
-async function saveExport(source, requestedName) {
-  const downloads = process.env.ONETAKE_DOWNLOADS_DIR || path.join(os.homedir(), "Downloads");
+async function saveExport(source, requestedName, directory) {
+  const downloads = directory || process.env.ONETAKE_DOWNLOADS_DIR || path.join(os.homedir(), "Downloads");
   await fs.promises.mkdir(downloads, { recursive: true });
   const safeName = String(requestedName || "OneTake.show.mp4")
     .replace(/[\\/:*?"<>|\x00-\x1f]/g, "_")
@@ -176,15 +176,19 @@ async function saveExport(source, requestedName) {
   throw new Error("下载目录中同名成片过多，请整理后重试");
 }
 
-async function handleQuickEdit(req, res, url, reply, home) {
+async function handleQuickEdit(req, res, url, reply, home, getWorkspace) {
   const temp = await fs.promises.mkdtemp(path.join(os.tmpdir(), "onetake-companion-edit-"));
   let retained = false;
   try {
     const type = req.headers["x-onetake-video-type"] || req.headers["content-type"];
     const input = path.join(temp, `${randomUUID()}.${extensionFor(type)}`);
     if (url.pathname === "/quick-edit/analyze-silence") {
+      const projectId = url.searchParams.get("projectId");
+      const workspace = projectId ? getWorkspace() : null;
+      if (workspace) workspace.get(projectId);
       let sourceFile = input;
       let sourceSize = 0;
+      let linkedRecording = null;
       if (req.headers["content-type"]?.startsWith("application/json")) {
         const chunks = [];
         for await (const chunk of req) {
@@ -195,7 +199,8 @@ async function handleQuickEdit(req, res, url, reply, home) {
         if (typeof hint.filename !== "string" || !/^(?:onetake_recording|[^/\\\x00-\x1f]{1,160}_onetake)_\d{10,16}\.(mp4|webm|mov)$/.test(hint.filename) ||
             !Number.isSafeInteger(hint.size) || hint.size < 100 || hint.size > MAX_VIDEO_BYTES)
           throw new InputError("本地录像文件名或大小无效");
-        sourceFile = path.join(process.env.ONETAKE_DOWNLOADS_DIR || path.join(os.homedir(), "Downloads"), hint.filename);
+        linkedRecording = workspace ? workspace.findRecording(projectId, hint.filename, hint.size) : null;
+        sourceFile = linkedRecording?.file || path.join(process.env.ONETAKE_DOWNLOADS_DIR || path.join(os.homedir(), "Downloads"), hint.filename);
         const stat = await fs.promises.lstat(sourceFile).catch(() => null);
         if (!stat?.isFile() || stat.size !== hint.size)
           throw new InputError("默认下载目录中没有找到对应原片", 404);
@@ -207,16 +212,26 @@ async function handleQuickEdit(req, res, url, reply, home) {
       const minDuration = boundedNumber(url.searchParams.get("minDuration"), 2, 0.5, 10);
       const noiseDb = boundedNumber(url.searchParams.get("noiseDb"), -35, -80, -10);
       const cuts = metadata.hasAudio ? await silenceCuts(sourceFile, metadata.duration, noiseDb, minDuration) : [];
-      const recordingId = randomUUID();
+      let recordingId = randomUUID();
       if (sourceFile === input) {
+        if (workspace) {
+          const originalName = url.searchParams.get("filename");
+          linkedRecording = workspace.importUploaded(projectId, input, originalName, extensionFor(type));
+          recordingId = linkedRecording.recordingId;
+        } else {
         const videoDir = path.join(home, "videos");
         await fs.promises.mkdir(videoDir, { recursive: true, mode: 0o700 });
         if (!(await fs.promises.lstat(videoDir)).isDirectory()) throw new InputError("原片目录必须是本机普通目录");
         await fs.promises.rename(input, path.join(videoDir, `${recordingId}.${extensionFor(type)}`));
+        }
       } else {
+        if (workspace) {
+          linkedRecording ||= workspace.register(projectId, path.basename(sourceFile), sourceSize);
+          recordingId = linkedRecording.recordingId;
+        }
         savedRecordings.set(recordingId, { file: sourceFile, size: sourceSize });
       }
-      return reply(200, { success: true, ...metadata, cuts, recordingId, source: sourceFile === input ? "assistant" : "downloads" });
+      return reply(200, { success: true, ...metadata, cuts, recordingId, source: sourceFile === input || linkedRecording?.kind === "workspace" ? "assistant" : "downloads" });
     }
     if (url.pathname !== "/quick-edit/render") return reply(404, { message: "Not found" });
     const coverBytes = Number(req.headers["x-onetake-cover-bytes"]);
@@ -225,11 +240,13 @@ async function handleQuickEdit(req, res, url, reply, home) {
     const cuts = renderCuts(req.headers["x-onetake-render-options"]);
     const options = JSON.parse(req.headers["x-onetake-render-options"] || "{}");
     const recordingId = options.recordingId;
+    const workspace = options.workspaceProjectId ? getWorkspace() : null;
+    if (workspace) workspace.get(options.workspaceProjectId);
     let savedInput = "";
     if (recordingId !== undefined) {
       if (typeof recordingId !== "string" || !/^[\da-f-]{36}$/.test(recordingId))
         throw new InputError("本地录像编号无效，请重新分析原片");
-      const direct = savedRecordings.get(recordingId);
+      const direct = workspace ? workspace.recording(options.workspaceProjectId, recordingId) : savedRecordings.get(recordingId);
       if (direct) {
         const stat = await fs.promises.lstat(direct.file).catch(() => null);
         if (stat?.isFile() && stat.size === direct.size) savedInput = direct.file;
@@ -276,7 +293,10 @@ async function handleQuickEdit(req, res, url, reply, home) {
     cleanup.unref();
     reply(202, { jobId: id });
     void renderVideo({ input: renderInput, cover, output, metadata, cuts }).then(async () => {
-      job.exportFile = await saveExport(output, options.outputName);
+      job.exportFile = await saveExport(output, options.outputName, workspace ? workspace.exportDirectory(options.workspaceProjectId) : undefined);
+      if (workspace) workspace.addExport(options.workspaceProjectId, job.exportFile, cover, id);
+      job.output = job.exportFile.path;
+      await fs.promises.rm(temp, { recursive: true, force: true });
       job.status = "done";
     }).catch(error => {
       console.error("[companion quick-edit] render failed:", error);

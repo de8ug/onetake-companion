@@ -1,7 +1,7 @@
 {
   "name": "onetake-companion",
-  "version": "0.2.0",
-  "description": "Standalone local media finishing tools and optional personal-key drafting for OneTake",
+  "version": "0.3.0",
+  "description": "OneTake local video workbench: editable projects and local media finishing",
   "license": "MIT",
   "private": true,
   "engines": { "node": ">=22" },

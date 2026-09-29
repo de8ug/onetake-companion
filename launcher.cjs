@@ -11,7 +11,7 @@ async function running() {
     const response = await fetch(`http://127.0.0.1:${port}/status`, { headers: { Authorization: `Bearer ${fs.readFileSync(tokenFile, "utf8").trim()}` }, signal: AbortSignal.timeout(1500) });
     if (!response.ok) return false;
     const status = await response.json();
-    if (!status.capabilities?.localMedia || status.capabilities?.legacyWhiteboard !== false) throw new Error("端口上运行的是旧助手，请先关闭旧进程再启动独立版");
+    if (!status.capabilities?.localMedia || !status.capabilities?.workspace || status.capabilities?.legacyWhiteboard !== false) throw new Error("端口上运行的是旧助手，请先关闭旧进程再启动工作台");
     return true;
   } catch (error) { if (error.message.includes("旧助手")) throw error; return false; }
 }
@@ -45,8 +45,11 @@ async function main() {
     for (let i = 0; i < 40 && !await running(); i++) await new Promise(resolve => setTimeout(resolve, 250));
     if (!await running()) throw new Error("助手未启动，请检查端口或私有目录中的日志");
   }
-  console.log("独立本地助手已就绪；关闭启动窗口不影响运行。首次使用需在网页中配对。");
+  console.log(`OneTake 口播视频工作台已就绪：http://127.0.0.1:${port}；工程准备免费，网页剪辑需配对与 PRO。`);
   if (process.argv.includes("--check")) return;
+  const address = `http://127.0.0.1:${port}`;
+  const opener = process.platform === "darwin" ? ["open", [address]] : process.platform === "win32" ? ["rundll32.exe", ["url.dll,FileProtocolHandler", address]] : ["xdg-open", [address]];
+  spawnSync(opener[0], opener[1], { stdio: "ignore" });
   const file = path.join(home, "pairing-token");
   if (process.platform === "darwin") {
     const result = spawnSync("osascript", ["-e", 'display dialog "独立本地助手已启动。复制配对码后，回到 OneTake 连接。" with title "OneTake Companion" buttons {"完成", "复制配对码"} default button "复制配对码"'], { encoding: "utf8" });

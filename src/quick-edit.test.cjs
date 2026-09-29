@@ -7,6 +7,7 @@ const path = require("node:path");
 const { test } = require("node:test");
 const { promisify } = require("node:util");
 const { timeoutMs } = require("./quick-edit.cjs");
+const { seedPlan } = require("./project-generation.cjs");
 
 const run = promisify(execFile);
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -45,6 +46,7 @@ test("production-origin page reaches local analysis and cover render only throug
       ONETAKE_COMPANION_HOME: home,
       ONETAKE_DOWNLOADS_DIR: downloads,
       ONETAKE_PROJECTS_DIR: path.join(dir, "projects"),
+      ONETAKE_WORKSPACE_DIR: path.join(dir, "workspace"),
       ONETAKE_ALLOWED_ORIGINS: "https://onetake.show,http://127.0.0.1:3001",
       ONETAKE_LICENSE_URL: `http://127.0.0.1:${licenseServer.address().port}/validate`,
     },
@@ -170,6 +172,27 @@ test("production-origin page reaches local analysis and cover render only throug
     const later = await pixel("0.9");
     assert(first[0] > 170 && first[1] > 150 && first[2] < 70);
     assert(later[2] > 130 && later[0] < 90);
+
+    const created = await fetch(`${url}/workbench/projects`, { method: "POST", headers: { Origin: headers.Origin, Authorization: headers.Authorization, "Content-Type": "application/json" }, body: JSON.stringify({ plan: seedPlan("whiteboard", "合成测试") }) });
+    assert.equal(created.status, 201); const managed = await created.json();
+    const managedAnalysis = await fetch(`${url}/quick-edit/analyze-silence?projectId=${managed.id}`, { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify({ filename, size: videoBytes.length }) });
+    assert.equal(managedAnalysis.status, 200); const managedRecord = await managedAnalysis.json();
+    const managedRender = await fetch(`${url}/quick-edit/render`, { method: "POST", headers: { ...headers, "Content-Type": "application/octet-stream", "X-OneTake-Cover-Bytes": String(coverBytes.length), "X-OneTake-Render-Options": JSON.stringify({ cuts: [], hasAudio: true, recordingId: managedRecord.recordingId, workspaceProjectId: managed.id, outputName: "workbench-test.mp4" }) }, body: coverBytes });
+    assert.equal(managedRender.status, 202); const managedJob = await managedRender.json();
+    let managedResult;
+    for (let n = 0; n < 100; n++) {
+      managedResult = await (await fetch(`${url}/quick-edit/render/${managedJob.jobId}`, { headers })).json();
+      if (managedResult.status !== "running") break;
+      await delay(100);
+    }
+    assert.equal(managedResult.status, "done", managedResult.error);
+    const savedProject = await (await fetch(`${url}/workbench/projects/${managed.id}`, { headers })).json();
+    assert.equal(savedProject.recordings.length, 1); assert.equal(savedProject.exports.length, 1);
+    assert.equal(savedProject.recordings[0].kind, "downloads");
+    assert.deepEqual(await fs.readdir(path.join(savedProject.directory, "originals")), []);
+    assert.equal(savedProject.exports[0].path, path.join(savedProject.directory, "exports", "workbench-test.mp4"));
+    assert.equal((await fs.stat(path.join(savedProject.directory, "exports", savedProject.exports[0].coverName))).size, coverBytes.length);
+    assert.deepEqual(await fs.readFile(path.join(downloads, filename)), videoBytes);
   } finally {
     child.kill();
     await close(licenseServer);

@@ -10,7 +10,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const listen = server => new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
 const close = server => new Promise(resolve => server.close(resolve));
 
-test("local model settings require trusted origin, pairing and PRO, and never echo keys", { timeout: 30000 }, async () => {
+test("personal-key settings are free but require trusted origin and pairing, and never echo keys", { timeout: 30000 }, async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "onetake-model-endpoint-"));
   const home = path.join(dir, "home");
   const license = http.createServer((req, res) => {
@@ -51,8 +51,8 @@ test("local model settings require trusted origin, pairing and PRO, and never ec
     const origin = "https://onetake.show";
     assert.equal((await request({ Origin: "https://untrusted.example", Authorization: `Bearer ${pairing}`, "X-OneTake-License": "pro-token" })).status, 403);
     assert.equal((await request({ Origin: origin, "X-OneTake-License": "pro-token" })).status, 401);
-    assert.equal((await request({ Origin: origin, Authorization: `Bearer ${pairing}` })).status, 403);
-    assert.equal((await request({ Origin: origin, Authorization: `Bearer ${pairing}`, "X-OneTake-License": "invalid" })).status, 403);
+    assert.equal((await request({ Origin: origin, Authorization: `Bearer ${pairing}` })).status, 200);
+    assert.equal((await request({ Origin: origin, Authorization: `Bearer ${pairing}`, "X-OneTake-License": "invalid" })).status, 200);
     const allowed = await request({ Origin: origin, Authorization: `Bearer ${pairing}`, "X-OneTake-License": "pro-token" });
     assert.equal(allowed.status, 200);
     assert.ok(!(await allowed.text()).includes("synthetic-test-key"));
