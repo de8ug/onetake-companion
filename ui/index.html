@@ -6,7 +6,7 @@
 <header><strong>OneTake 口播视频工作台</strong><span>本地工程与视频</span><button id="settings-toggle">模型设置</button></header>
 <p id="notice" role="status" aria-live="polite"></p>
 <dialog id="settings">
- <div class="section-heading"><h2>我的模型</h2><button id="settings-close" aria-label="关闭模型设置">关闭</button></div><form id="model-form"><label>服务<select id="provider"><option value="minimax">MiniMax</option><option value="glm">智谱</option></select></label><label>模型名称<input id="model" placeholder="留空使用默认模型"></label><label>API Key<input id="key" type="password" autocomplete="new-password"></label><button>保存到本机</button></form><p id="model-status"></p>
+ <div class="section-heading"><h2>我的模型</h2><button id="settings-close" aria-label="关闭模型设置">关闭</button></div><form id="model-form"><label>服务<select id="provider"><option value="minimax">MiniMax</option><option value="glm">智谱</option></select></label><label>模型名称<input id="model" placeholder="留空使用默认模型"></label><label>API Key<input id="key" type="password" autocomplete="new-password"></label><button type="submit">保存到本机</button></form><p id="model-result" role="status" aria-live="polite"></p><p id="model-status"></p>
 </dialog>
 <main><aside><div class="section-heading"><h2>工程</h2><button id="new-project">＋ 新建</button></div><nav id="project-list" aria-label="工程列表"></nav><p id="root-path" class="path"></p></aside>
 <article>

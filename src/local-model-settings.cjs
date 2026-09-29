@@ -33,19 +33,20 @@ function saveModelSettings(home, provider, key, model) {
   if (!fields[provider]) throw new Error("不支持的模型服务");
   if (typeof key !== "string" || key.trim().length < 8 || key.length > 4096)
     throw new Error("请输入有效的 API Key");
-  if (model !== undefined && (typeof model !== "string" || !/^[a-zA-Z0-9_.-]{1,100}$/.test(model)))
+  if (model !== undefined && (typeof model !== "string" || (model.trim() && !/^[a-zA-Z0-9_.-]{1,100}$/.test(model.trim()))))
     throw new Error("模型名称无效");
   const file = settingsPath(home);
   if (fs.existsSync(file)) privateFile(file);
   const saved = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : {};
-  saved[provider] = { key: key.trim(), ...(model ? { model } : {}) };
+  const selectedModel = model?.trim();
+  saved[provider] = { key: key.trim(), ...(selectedModel ? { model: selectedModel } : {}) };
   const temporary = `${file}.${process.pid}.tmp`;
   fs.writeFileSync(temporary, JSON.stringify(saved), { mode: 0o600, flag: "wx" });
   try { fs.renameSync(temporary, file); }
   catch (error) { fs.rmSync(temporary, { force: true }); throw error; }
   fs.chmodSync(file, 0o600);
   process.env[fields[provider].key] = key.trim();
-  if (model) process.env[fields[provider].model] = model;
+  if (selectedModel) process.env[fields[provider].model] = selectedModel;
   return { provider, configured: true };
 }
 

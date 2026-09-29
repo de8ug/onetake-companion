@@ -38,3 +38,22 @@ test("model settings reject symbolic links rather than reading external secrets"
     assert.equal(fs.readFileSync(target, "utf8"), "{}");
   } finally { fs.rmSync(home, { recursive: true, force: true }); }
 });
+
+test("blank model name uses the provider default and still marks it configured", () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "onetake-default-model-"));
+  const previousKey = process.env.MINIMAX_API_KEY;
+  const previousModel = process.env.MINIMAX_MODEL;
+  try {
+    const result = saveModelSettings(home, "minimax", "synthetic-minimax-key", "");
+    assert.deepEqual(result, { provider: "minimax", configured: true });
+    const saved = JSON.parse(fs.readFileSync(path.join(home, "model-settings.json"), "utf8"));
+    assert.equal(saved.minimax.model, undefined);
+    assert.equal(saved.minimax.key, "synthetic-minimax-key");
+    assert.equal(saveModelSettings(home, "minimax", "synthetic-minimax-key", "  ").configured, true);
+    assert.throws(() => saveModelSettings(home, "minimax", "synthetic-minimax-key", "bad model"), /模型名称无效/);
+  } finally {
+    if (previousKey === undefined) delete process.env.MINIMAX_API_KEY; else process.env.MINIMAX_API_KEY = previousKey;
+    if (previousModel === undefined) delete process.env.MINIMAX_MODEL; else process.env.MINIMAX_MODEL = previousModel;
+    fs.rmSync(home, { recursive: true, force: true });
+  }
+});

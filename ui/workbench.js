@@ -144,9 +144,22 @@ action("import-project", async () => {
 action("download-project", async () => { const a = document.createElement("a"); a.href = `/workbench/projects/${project.id}/file?name=project.onetake.json`; a.download = `${project.title}.onetake.json`; a.click(); });
 action("open-folder", async () => { await api(`/workbench/projects/${project.id}/open-folder`, {}); });
 $("recording-file").onchange = async e => { try { const file = e.target.files[0]; if (!file) return; await api("/workbench/recordings/register", { projectId: project.id, filename: file.name, size: file.size }); project = await api(`/workbench/projects/${project.id}`); showFiles(); notice("已关联本机原片，只发送名称和大小，没有传视频。"); } catch(e) { notice(e.message, true); } finally { e.target.value = ""; } };
-action("settings-toggle", async () => { $("settings").showModal(); const result = await api("/status"); $("model-status").textContent = result.textProviders.map(p => `${p.provider || p.id}：${p.configured ? "已配置" : "未配置"}`).join(" · "); });
+async function refreshModelStatus() {
+  const result = await api("/status");
+  $("model-status").textContent = result.textProviders.map(p => `${p.provider || p.id}：${p.configured ? "已配置" : "未配置"}`).join(" · ");
+}
+action("settings-toggle", async () => { $("settings").showModal(); $("model-result").textContent = ""; await refreshModelStatus(); });
 $("settings-close").onclick = () => $("settings").close();
-$("model-form").onsubmit = async e => { e.preventDefault(); try { await api("/model-settings", { provider: $("provider").value, key: $("key").value, model: $("model").value }); $("key").value = ""; notice("模型配置已保存到本机私有目录，Key 不写入工程或浏览器存储。"); } catch(e) { notice(e.message, true); } };
+$("model-form").onsubmit = async e => {
+  e.preventDefault(); const button = $("model-form").querySelector("button[type=submit]");
+  button.disabled = true; $("model-result").textContent = "正在保存…"; $("model-result").classList.remove("error");
+  try {
+    await api("/model-settings", { provider: $("provider").value, key: $("key").value, model: $("model").value });
+    $("key").value = ""; await refreshModelStatus();
+    $("model-result").textContent = "已保存到本机，可开始生成工程。";
+  } catch (error) { $("model-result").textContent = error.message; $("model-result").classList.add("error"); }
+  finally { button.disabled = false; }
+};
 $("new-project").onclick = async () => { if (plan && !await ask("离开当前草稿？请先保存需要保留的修改。")) return; project = null; plan = null; $("start").hidden = false; $("editor").hidden = true; notice(""); };
 for (const id of ["title", "core-point", "cover-title", "cover-subtitle", "description", "keywords"]) $(id).oninput = readCommon;
 refresh().catch(e => notice(e.message, true));
