@@ -1,0 +1,13 @@
+node_modules/
+.env
+*.env
+!config.env.example
+model-settings.json
+pairing-token
+*.log
+videos/
+Downloads/
+*.mp4
+*.mov
+*.webm
+.DS_Store

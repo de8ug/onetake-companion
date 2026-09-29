@@ -1,0 +1,14 @@
+{
+  "name": "onetake-companion",
+  "version": "0.2.0",
+  "description": "Standalone local media finishing tools and optional personal-key drafting for OneTake",
+  "license": "MIT",
+  "private": true,
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node src/server.cjs",
+    "launch": "node launcher.cjs",
+    "check": "node launcher.cjs --check",
+    "test": "node --test src/*.test.cjs test/*.test.cjs"
+  }
+}
