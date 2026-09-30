@@ -43,6 +43,7 @@ function syncJSON() { $("plan-json").value = JSON.stringify(plan, null, 2); }
 function readCommon() {
   Object.assign(plan, { title: $("title").value, corePoint: $("core-point").value, coverTitle: $("cover-title").value, coverSubtitle: $("cover-subtitle").value });
   plan.publication = { description: $("description").value, keywords: $("keywords").value.split(/[,，]/).map(s => s.trim()).filter(Boolean) };
+  plan.imagePublication = { description: $("image-description").value, keywords: $("image-keywords").value.split(/[,，]/).map(s => s.trim()).filter(Boolean) };
   syncJSON();
 }
 async function saveCurrent() {
@@ -63,6 +64,7 @@ function showPlan(value, reset = false) {
   $("editor-heading").textContent = plan.mode === "whiteboard" ? "白板工程草稿" : "口播工程草稿";
   for (const [id, key] of [["title", "title"], ["core-point", "corePoint"], ["cover-title", "coverTitle"], ["cover-subtitle", "coverSubtitle"]]) $(id).value = plan[key] || "";
   $("description").value = plan.publication.description; $("keywords").value = plan.publication.keywords.join("，");
+  $("image-description").value = (plan.imagePublication || plan.publication).description; $("image-keywords").value = (plan.imagePublication || plan.publication).keywords.join("，");
   renderPart();
   $("saved").hidden = !project; $("unsaved").hidden = Boolean(project); syncJSON();
 }
@@ -178,6 +180,7 @@ async function refresh() {
 }
 function showFiles() {
   $("directory").textContent = project.directory || ""; $("saved").hidden = false;
+  $("posters").replaceChildren(); for (const item of project.posters || []) { const li = document.createElement("li"); li.textContent = `白板第 ${item.page + 1} 页 · ${item.filename}`; $("posters").append(li); }
   for (const [id, items] of [["recordings", project.recordings], ["exports", project.exports]]) {
     $(id).replaceChildren(); for (const item of items || []) { const li = document.createElement("li"); li.textContent = item.filename ? `原片：${item.filename} · ${item.kind === "downloads" ? "引用 Downloads，未复制" : "工程内原片"}` : `成片：${item.name} · 封面：${item.coverName}`; $(id).append(li); }
   }
@@ -207,6 +210,7 @@ action("import-project", async () => {
   try { const result = await api(`/workbench/projects/${project.id}/handoff`, { target: $("target").value }); if (win) win.location = result.url; else throw new Error("浏览器阻止打开页面，请允许弹窗后重试，或下载工程手动导入"); notice("已打开所选 OneTake；在那里确认导入。凭证 10 分钟有效，不包含 API Key。"); } catch(e) { win?.close(); throw e; }
 });
 action("download-project", async () => { const a = document.createElement("a"); a.href = `/workbench/projects/${project.id}/file?name=project.onetake.json`; a.download = `${project.title}.onetake.json`; a.click(); });
+action("download-bundle", async () => { if (!await ask("整理工程、已确认图片、发布词与现有成片为本地 ZIP？不包含原片、密钥或账号数据。未保存的修改不会带入。")) return; await api(`/workbench/projects/${project.id}/bundle`, {}); const a = document.createElement("a"); a.href = `/workbench/projects/${project.id}/file?name=publishing-bundle.zip`; a.download = `${project.title}-发布包.zip`; a.click(); notice("发布包已保存到工程目录并开始下载；发布前仍需本人检查图片和文案。"); });
 action("open-folder", async () => { await api(`/workbench/projects/${project.id}/open-folder`, {}); });
 action("trash-project", async () => {
   if (!project) return;
@@ -233,5 +237,5 @@ $("model-form").onsubmit = async e => {
   finally { button.disabled = false; }
 };
 $("new-project").onclick = async () => { if (plan && !await ask("离开当前草稿？请先保存需要保留的修改。")) return; project = null; plan = null; $("start").hidden = false; $("editor").hidden = true; notice(""); };
-for (const id of ["title", "core-point", "cover-title", "cover-subtitle", "description", "keywords"]) $(id).oninput = readCommon;
+for (const id of ["title", "core-point", "cover-title", "cover-subtitle", "description", "keywords", "image-description", "image-keywords"]) $(id).oninput = readCommon;
 refresh().catch(e => notice(e.message, true));

@@ -11,7 +11,7 @@ const { createWorkspace } = require("./workspace.cjs");
 const { generatePlan, seedPlan } = require("./project-generation.cjs");
 const { suggestQuote, suggestImagePrompt, generateMiniMaxImage } = require("./segment-assist.cjs");
 
-const VERSION = "0.3.0";
+const VERSION = "0.4.0";
 const DEFAULT_ORIGINS = "http://localhost:3001,http://127.0.0.1:3001,https://onetake.show,https://www.onetake.show";
 const isDevelopment = origin => {
   if (!origin) return true;
@@ -84,14 +84,14 @@ function createServer(options = {}) {
       });
       if (await handleQuickEditJob(req, res, url, reply)) return;
       if (req.method === "GET" && url.pathname === "/workbench/projects") return reply(200, { projects: library().list(), root: library().root, downloads: library().downloads });
-      const projectRoute = url.pathname.match(/^\/workbench\/projects\/([a-f0-9-]{36})(?:\/(plan|file|asset|handoff|open-folder|trash|suggest-quote|suggest-image-prompt|generate-image|remove-image))?$/);
+      const projectRoute = url.pathname.match(/^\/workbench\/projects\/([a-f0-9-]{36})(?:\/(plan|file|asset|handoff|open-folder|trash|suggest-quote|suggest-image-prompt|generate-image|remove-image|poster|bundle))?$/);
       if (projectRoute && req.method === "GET") {
         const id = projectRoute[1];
         if (projectRoute[2] === "plan") return reply(200, JSON.parse(library().read(id, "content-plan.json")));
         if (projectRoute[2] === "file") {
           const name = url.searchParams.get("name") || "project.onetake.json";
           const bytes = library().read(id, name);
-          res.writeHead(200, { "Content-Type": name.endsWith(".json") ? "application/json" : "text/plain; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" }); return res.end(bytes);
+          res.writeHead(200, { "Content-Type": name.endsWith(".json") ? "application/json" : name.endsWith(".zip") ? "application/zip" : "text/plain; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" }); return res.end(bytes);
         }
         if (projectRoute[2] === "asset") {
           try {
@@ -106,6 +106,15 @@ function createServer(options = {}) {
       const routes = ["/quick-edit/analyze-silence", "/quick-edit/render", "/model-settings", "/talkinghead/script", "/talkinghead/broll", "/workbench/projects", "/workbench/generate", "/workbench/seed", "/workbench/recordings/register"];
       if (req.method !== "POST" || !routes.includes(url.pathname) && !projectRoute) return reply(404, { message: "Not found" });
       if (busy || hasActiveRender()) return reply(409, { message: "已有任务运行，请等待" });
+      if (projectRoute?.[2] === "poster") {
+        if (req.headers["content-type"] !== "image/png") return reply(415, { message: "只接受 PNG 页面图片" });
+        const page = Number(url.searchParams.get("page"));
+        if (!Number.isSafeInteger(page) || page < 0) return reply(400, { message: "白板页编号无效" });
+        const chunks = []; let bytes = 0;
+        for await (const chunk of req) { bytes += chunk.length; if (bytes > 8_000_000) return reply(413, { message: "页面图片过大" }); chunks.push(chunk); }
+        try { return reply(200, library().addPoster(projectRoute[1], page, Buffer.concat(chunks))); }
+        catch { return reply(422, { message: "白板图片没有保存；请确认工程模式、页数与 PNG 内容" }); }
+      }
       if (url.pathname.startsWith("/quick-edit/")) {
       const license = req.headers["x-onetake-license"];
       if (typeof license !== "string" || !license.trim()) return reply(403, { message: "需要有效的 PRO 授权" });
@@ -145,6 +154,10 @@ function createServer(options = {}) {
       }
       if (projectRoute) {
         const id = projectRoute[1];
+        if (projectRoute[2] === "bundle") {
+          try { return reply(200, library().bundle(id)); }
+          catch { return reply(422, { message: "发布包未生成；请检查工程图片、成片大小与文件完整性" }); }
+        }
         if (projectRoute[2] === "handoff") return reply(200, library().handoff(id, input.target));
         if (projectRoute[2] === "open-folder") { await library().openFolder(id); return reply(200, { ok: true }); }
         if (projectRoute[2] === "trash") {

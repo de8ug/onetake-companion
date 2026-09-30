@@ -23,6 +23,13 @@ test("local UI is free, denies CSRF and exposes only origin-bound project ticket
     assert.equal((await post("/workbench/seed", {}, "https://onetake.show")).status, 401);
     const draft = await (await post("/workbench/seed", { mode: "whiteboard" })).json();
     const project = await (await post("/workbench/projects", { plan: draft.plan })).json(); assert.match(project.id, /^[a-f0-9-]{36}$/);
+    const poster = await fetch(`${base}/workbench/projects/${project.id}/poster?page=0`, { method: "POST", headers: { Cookie: cookie, Origin: base, "Content-Type": "image/png" }, body: imageBytes });
+    assert.equal(poster.status, 200);
+    assert.equal((await fetch(`${base}/workbench/projects/${project.id}/poster?page=1`, { method: "POST", headers: { Origin: "https://onetake.show", "Content-Type": "image/png" }, body: imageBytes })).status, 401);
+    assert.equal((await post(`/workbench/projects/${project.id}/bundle`, {})).status, 200);
+    const bundle = await fetch(`${base}/workbench/projects/${project.id}/file?name=publishing-bundle.zip`, { headers: { Cookie: cookie } });
+    assert.equal(bundle.headers.get("content-type"), "application/zip");
+    assert((await bundle.arrayBuffer()).byteLength > 500);
     const quote = await (await post(`/workbench/projects/${project.id}/suggest-quote`, { partId: "intro", provider: "minimax" })).json(); assert.equal(quote.quote, "先讲具体例子");
     const prompt = await (await post(`/workbench/projects/${project.id}/suggest-image-prompt`, { partId: "intro", provider: "minimax" })).json(); assert.match(prompt.prompt, /示意图/);
     assert.equal((await post(`/workbench/projects/${project.id}/generate-image`, { partId: "intro", prompt: "一张具体的示意图" })).status, 422);

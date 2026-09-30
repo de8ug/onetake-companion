@@ -11,7 +11,7 @@ test("runtime has no main-app imports, environment files or bundled Codex depend
     const text = fs.readFileSync(path.join(root, "src", file), "utf8");
     assert.doesNotMatch(text, /excalidraw|backend\/|codex-runtimes|node_modules|compose\.ts|engine\.cjs/);
     for (const match of text.matchAll(/require\(["']([^"']+)["']\)/g)) {
-      assert(match[1].startsWith("node:") || match[1].startsWith("./"), `External import ${match[1]}`);
+      assert(match[1].startsWith("node:") || match[1].startsWith("./") || match[1] === "fflate", `External import ${match[1]}`);
     }
   }
 });

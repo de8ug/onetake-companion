@@ -5,6 +5,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { createWorkspace } = require("../src/workspace.cjs");
 const { seedPlan, validatePlan, generatePlan } = require("../src/project-generation.cjs");
+const { unzipSync } = require("fflate");
 test("two modes pack independently; tickets are origin-bound, one-use; Downloads references survive restart", async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "workbench-test-"));
   try {
@@ -80,5 +81,32 @@ test("moving a project to trash preserves referenced Downloads original", async 
     assert(fs.readdirSync(moved.trashDirectory).some(name => name.includes(project.id)));
     assert(fs.existsSync(path.join(downloads, filename)));
     assert.throws(() => w.dir(project.id), /未找到工程/);
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test("whiteboard posters and distinct image copy are packaged without originals or local secrets", async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "workbench-publish-"));
+  try {
+    const downloads = path.join(tmp, "Downloads"); fs.mkdirSync(downloads);
+    const w = createWorkspace({ root: path.join(tmp, "projects"), downloads });
+    const plan = seedPlan("whiteboard");
+    plan.imagePublication = { description: "图文说明，和视频发布词不同。", keywords: ["图文", "讲解", "白板", "方法"] };
+    const p = await w.create(plan);
+    const poster = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), Buffer.alloc(200)]);
+    w.addPoster(p.id, 0, poster);
+    assert.throws(() => w.addPoster(p.id, 500, poster));
+    assert.throws(() => w.addPoster(p.id, 1, Buffer.alloc(200)));
+    const original = "主题_onetake_1790484033245.mp4";
+    fs.writeFileSync(path.join(downloads, original), Buffer.alloc(1000));
+    w.register(p.id, original, 1000);
+    const { filename } = w.bundle(p.id);
+    const zip = unzipSync(w.read(p.id, filename));
+    assert.equal(Buffer.from(zip["posters/page-01.png"]).equals(poster), true);
+    assert.match(Buffer.from(zip["image-publication.md"]).toString(), /图文说明/);
+    assert.match(Buffer.from(zip["video-publication.md"]).toString(), /分享一个/);
+    assert.equal(Object.keys(zip).some(name => name.includes("original") || name.includes("pairing") || name.includes("key")), false);
+    assert.equal(w.get(p.id).posters.length, 1);
+    await w.pack(JSON.parse(w.read(p.id, "content-plan.json")), p.id);
+    assert.equal(w.get(p.id).posters.length, 1);
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 });

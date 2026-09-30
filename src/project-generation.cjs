@@ -17,6 +17,9 @@ function validatePlan(plan) {
   const publication = plan.publication;
   if (!publication || !Array.isArray(publication.keywords) || publication.keywords.length !== 4 || new Set(publication.keywords).size !== 4) throw new Error("需四个不同关键词");
   result.publication = { description: text(publication.description, "发布词", 2000), keywords: publication.keywords.map(x => text(x, "关键词", 30)) };
+  const imagePublication = plan.imagePublication || publication;
+  if (!Array.isArray(imagePublication.keywords) || imagePublication.keywords.length !== 4 || new Set(imagePublication.keywords).size !== 4) throw new Error("图文发布词需四个不同关键词");
+  result.imagePublication = { description: text(imagePublication.description, "图文发布词", 2000), keywords: imagePublication.keywords.map(x => text(x, "图文关键词", 30)) };
   const key = plan.mode === "whiteboard" ? "pages" : "segments", parts = plan[key];
   if (!Array.isArray(parts) || parts.length < 1 || parts.length > 12) throw new Error("需 1 至 12 个段落");
   if (result.mode === "whiteboard" && parts[0].id !== "intro") throw new Error("白板第一讲解段的编号需为 intro");

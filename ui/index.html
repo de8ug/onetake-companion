@@ -31,13 +31,15 @@
  </section>
  <section id="panel-publication" role="tabpanel" aria-labelledby="tab-publication" hidden>
  <div class="columns"><label>封面大字<textarea id="cover-title" rows="2" maxlength="60"></textarea></label><label>封面说明<input id="cover-subtitle" maxlength="100"></label></div>
- <h2>发布词</h2><label>描述<textarea id="description" rows="3" maxlength="2000"></textarea></label><label>四个关键词（用逗号分隔）<input id="keywords"></label>
+ <h2>视频发布词</h2><label>描述<textarea id="description" rows="3" maxlength="2000"></textarea></label><label>四个关键词（用逗号分隔）<input id="keywords"></label>
+ <h2>图文发布词</h2><label>描述<textarea id="image-description" rows="3" maxlength="2000"></textarea></label><label>四个关键词（用逗号分隔）<input id="image-keywords"></label>
  </section>
  <section id="panel-json" role="tabpanel" aria-labelledby="tab-json" hidden><h2>完整草稿 JSON</h2><textarea id="plan-json" rows="14" spellcheck="false" aria-label="完整草稿 JSON"></textarea><button id="apply-json">应用 JSON</button><label>打开草稿文件<input id="plan-file" type="file" accept="application/json,.json"></label></section>
  <section id="panel-files" role="tabpanel" aria-labelledby="tab-files" hidden>
  <p id="unsaved">请先保存工程，再导入 OneTake 或关联原片。</p>
  <section id="saved" hidden><div class="section-heading"><h2>导入与文件</h2><button id="trash-project" type="button">移到回收区</button></div><p id="directory" class="path"></p>
- <div class="actions"><label>OneTake 目标<select id="target"><option value="http://127.0.0.1:3001">本地测试版 · 3001</option><option value="https://onetake.show">线上版 · onetake.show</option></select></label><button id="import-project">OneTake 导入</button><button id="download-project">下载工程</button><button id="open-folder">打开工程目录</button></div>
+ <div class="actions"><label>OneTake 目标<select id="target"><option value="http://127.0.0.1:3001">本地测试版 · 3001</option><option value="https://onetake.show">线上版 · onetake.show</option></select></label><button id="import-project">OneTake 导入</button><button id="download-project">下载工程</button><button id="download-bundle">整理并下载发布包</button><button id="open-folder">打开工程目录</button></div>
+ <p>白板页面图片在 OneTake 白板中主动保存到工作台；口播图片已包含在工程资源中。</p><ul id="posters"></ul>
  <h2>原片与成片</h2><label>关联 Downloads 中的原片<input id="recording-file" type="file" accept="video/mp4,video/webm,video/quicktime,.mov"></label><ul id="recordings"></ul><ul id="exports"></ul>
  </section>
  </section>

@@ -5,6 +5,7 @@ const crypto = require("node:crypto");
 const { execFile } = require("node:child_process");
 const { promisify } = require("node:util");
 const { validatePlan } = require("./project-generation.cjs");
+const { zipSync } = require("fflate");
 const run = promisify(execFile);
 const ID = /^[a-f0-9-]{36}$/;
 const recordingName = name => typeof name === "string" && /^(?:onetake_recording|[^/\\\x00-\x1f]{1,160}_onetake)_\d{10,16}\.(mp4|webm|mov)$/.test(name);
@@ -47,11 +48,11 @@ function createWorkspace(options = {}) {
     try {
       const input = path.join(pending, "input.json"); writeJson(input, plan);
       await run(process.execPath, [path.join(__dirname, "build-project.cjs"), input, pending, path.join(folder, "assets")], { timeout: 15000, maxBuffer: 1024 * 1024 });
-      for (const name of ["project.onetake.json", "content-plan.json", "录制稿与分镜.md", "发布词.md", "来源与核验.md", "preview.html"]) {
+      for (const name of ["project.onetake.json", "content-plan.json", "录制稿与分镜.md", "图文发布词.md", "发布词.md", "来源与核验.md", "preview.html"]) {
         fs.renameSync(path.join(pending, name), path.join(folder, name));
       }
       const manifest = get(id);
-      Object.assign(manifest, { title: plan.title, mode: plan.mode, updatedAt: Date.now(), state: "draft", publication: plan.publication, coverTitle: plan.coverTitle, coverSubtitle: plan.coverSubtitle });
+      Object.assign(manifest, { title: plan.title, mode: plan.mode, updatedAt: Date.now(), state: "draft", publication: plan.publication, imagePublication: plan.imagePublication, coverTitle: plan.coverTitle, coverSubtitle: plan.coverSubtitle });
       save(manifest); return manifest;
     } finally { fs.rmSync(pending, { recursive: true, force: true }); }
   }
@@ -59,12 +60,12 @@ function createWorkspace(options = {}) {
     plan = validatePlan(plan); const id = crypto.randomUUID();
     const folder = ordinaryDirectory(path.join(root, `${new Date().toISOString().slice(0, 10)}-${slug(plan.title)}--${id}`));
     for (const name of ["assets", "originals", "exports"]) ordinaryDirectory(path.join(folder, name));
-    writeJson(path.join(folder, "manifest.json"), { id, title: plan.title, mode: plan.mode, createdAt: Date.now(), updatedAt: Date.now(), state: "preparing", recordings: [], exports: [] });
+    writeJson(path.join(folder, "manifest.json"), { id, title: plan.title, mode: plan.mode, createdAt: Date.now(), updatedAt: Date.now(), state: "preparing", recordings: [], exports: [], posters: [] });
     try { return await pack(plan, id); }
     catch (error) { const manifest = get(id); manifest.state = "failed"; save(manifest); throw error; }
   }
   function read(id, name) {
-    if (!["project.onetake.json", "content-plan.json", "发布词.md", "录制稿与分镜.md", "来源与核验.md"].includes(name)) throw new Error("文件不可访问");
+    if (!["project.onetake.json", "content-plan.json", "发布词.md", "图文发布词.md", "录制稿与分镜.md", "来源与核验.md", "publishing-bundle.zip"].includes(name)) throw new Error("文件不可访问");
     const file = path.join(dir(id), name); if (!fs.lstatSync(file).isFile()) throw new Error("文件无效");
     return fs.readFileSync(file);
   }
@@ -172,10 +173,61 @@ function createWorkspace(options = {}) {
     fs.copyFileSync(cover, path.join(folder, coverName), fs.constants.COPYFILE_EXCL);
     const manifest = get(id); manifest.exports.push({ ...file, coverName, jobId, createdAt: Date.now() }); manifest.updatedAt = Date.now(); save(manifest);
   }
+  function addPoster(id, page, bytes) {
+    const manifest = get(id);
+    const scenes = JSON.parse(read(id, "project.onetake.json")).scenes;
+    if (manifest.mode !== "whiteboard" || !Number.isSafeInteger(page) || page < 0 || page >= scenes.length) throw new Error("白板页编号无效");
+    if (!Buffer.isBuffer(bytes) || bytes.length < 100 || bytes.length > 8_000_000 || !bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) throw new Error("白板图片无效");
+    const filename = `page-${String(page + 1).padStart(2, "0")}.png`;
+    const folder = ordinaryDirectory(path.join(dir(id), "assets", "posters"));
+    if (fs.existsSync(path.join(folder, filename)) && !fs.lstatSync(path.join(folder, filename)).isFile()) throw new Error("白板图片位置无效");
+    const temp = path.join(folder, `${crypto.randomUUID()}.tmp`);
+    fs.writeFileSync(temp, bytes, { mode: 0o600, flag: "wx" });
+    try { fs.renameSync(temp, path.join(folder, filename)); } catch (error) { fs.rmSync(temp, { force: true }); throw error; }
+    manifest.posters = (manifest.posters || []).filter(item => item.page !== page);
+    manifest.posters.push({ page, sceneId: scenes[page].id, filename });
+    manifest.posters.sort((a, b) => a.page - b.page);
+    manifest.updatedAt = Date.now(); save(manifest);
+    return { page, filename };
+  }
+  function bundle(id) {
+    const manifest = get(id), folder = dir(id);
+    const files = Object.create(null);
+    let total = 0;
+    const include = (name, file) => {
+      if (!fs.lstatSync(file).isFile()) throw new Error("发布包文件不是普通文件");
+      const stat = fs.statSync(file);
+      total += stat.size;
+      if (total > 160_000_000) throw new Error("发布包过大，请从工程目录单独取用成片");
+      files[name] = new Uint8Array(fs.readFileSync(file));
+    };
+    for (const [name, source] of [
+      ["project.onetake.json", "project.onetake.json"], ["content-plan.json", "content-plan.json"],
+      ["recording-script.md", "录制稿与分镜.md"], ["video-publication.md", "发布词.md"],
+      ["image-publication.md", "图文发布词.md"], ["sources-and-review.md", "来源与核验.md"],
+    ]) include(name, path.join(folder, source));
+    const plan = JSON.parse(read(id, "content-plan.json"));
+    for (const part of plan.segments || []) if (part.image) include(`assets/${part.image.filename}`, path.join(folder, "assets", part.image.filename));
+    for (const item of manifest.posters || []) {
+      if (!Number.isSafeInteger(item.page) || item.filename !== `page-${String(item.page + 1).padStart(2, "0")}.png`) throw new Error("白板页索引无效");
+      include(`posters/${item.filename}`, path.join(folder, "assets", "posters", item.filename));
+    }
+    for (const item of manifest.exports || []) {
+      if (!/^[^/\\\x00-\x1f]{1,160}\.mp4$/.test(item.name) || !/^[^/\\\x00-\x1f]{1,170}\.png$/.test(item.coverName)) throw new Error("成片索引无效");
+      include(`exports/${item.name}`, path.join(folder, "exports", item.name));
+      include(`exports/${item.coverName}`, path.join(folder, "exports", item.coverName));
+    }
+    const zip = Buffer.from(zipSync(files, { level: 0 }));
+    if (zip.length > 200_000_000) throw new Error("发布包过大，请从工程目录单独取用");
+    const temp = path.join(folder, `${crypto.randomUUID()}.tmp`);
+    fs.writeFileSync(temp, zip, { mode: 0o600, flag: "wx" });
+    try { fs.renameSync(temp, path.join(folder, "publishing-bundle.zip")); } catch (error) { fs.rmSync(temp, { force: true }); throw error; }
+    return { filename: "publishing-bundle.zip", bytes: zip.length };
+  }
   const exportDirectory = id => ordinaryDirectory(path.join(dir(id), "exports"));
   async function openFolder(id) {
     const folder = dir(id); await run(process.platform === "darwin" ? "open" : process.platform === "win32" ? "explorer.exe" : "xdg-open", [folder], { timeout: 10000 });
   }
-  return { root, downloads, list, get, dir, create, pack, read, image, attachImage, removeImage, trash, handoff, consume, register, recording, importUploaded, findRecording, addExport, exportDirectory, openFolder };
+  return { root, downloads, list, get, dir, create, pack, read, image, attachImage, removeImage, addPoster, bundle, trash, handoff, consume, register, recording, importUploaded, findRecording, addExport, exportDirectory, openFolder };
 }
 module.exports = { createWorkspace, recordingName };

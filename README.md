@@ -1,6 +1,6 @@
 # OneTake 口播视频工作台 / Video Workbench
 
-Lightweight local finishing tools for OneTake. No OneTake source checkout, web renderer, cloud media storage, npm dependencies, or bundled model account required.
+Lightweight local finishing tools for OneTake. No OneTake source checkout, web renderer, cloud media storage, or bundled model account required. ZIP publishing bundles use the MIT-licensed `fflate` dependency.
 
 For the complete creator workflow, pairing/editing steps, project recovery, and the exact migration boundary from the earlier assistant, see [中文使用指南](USER_GUIDE.zh-CN.md).
 
@@ -28,9 +28,10 @@ Import defaults to local `http://127.0.0.1:3001`, not production. The creator ma
 
 ## Run
 
-Install Node.js 22+ and FFmpeg/ffprobe on PATH. No `npm install` is needed.
+Install Node.js 22+ and FFmpeg/ffprobe on PATH. In a fresh source checkout, install the locked ZIP dependency once:
 
 ```sh
+npm ci
 node launcher.cjs
 node launcher.cjs --check
 npm test

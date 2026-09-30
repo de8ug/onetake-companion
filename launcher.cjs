@@ -28,6 +28,7 @@ async function main() {
   port = Number(process.env.ONETAKE_COMPANION_PORT || 3010);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("助手端口无效");
   if (!await running()) {
+    try { require.resolve("fflate"); } catch { throw new Error("缺少 ZIP 依赖，请在工作台源码目录运行 npm ci"); }
     for (const tool of ["ffmpeg", "ffprobe"]) if (spawnSync(tool, ["-version"], { stdio: "ignore" }).status !== 0) throw new Error(`缺少 ${tool}；请自行安装。启动器不自动安装软件。`);
     const args = [];
     if (fs.existsSync(config)) {

@@ -144,6 +144,7 @@ fs.writeFileSync(path.join(out, "录制稿与分镜.md"), [
   "", "## 内容复核", "", ...(plan.review || []).map(r => `- ${r}`), "",
 ].join("\n\n"));
 fs.writeFileSync(path.join(out, "发布词.md"), `# ${plan.title}\n\n${plan.publication.description}\n\n关键词：${plan.publication.keywords.join("、")}。\n\n封面大字：\n\n${plan.coverTitle}\n\n封面小字：${plan.coverSubtitle}\n\n发布前由本人确认；未自动发布。\n`);
+fs.writeFileSync(path.join(out, "图文发布词.md"), `# ${plan.title}｜图文版\n\n${plan.imagePublication.description}\n\n关键词：${plan.imagePublication.keywords.join("、")}。\n\n图片来自工程内经本人确认的页面或素材；发布前核验版权、隐私和事实。未自动发布。\n`);
 fs.writeFileSync(path.join(out, "来源与核验.md"), `# 来源与边界\n\n${plan.sourceNotes.map(s => `- ${s}`).join("\n")}\n\n示意图不是实测数据；没有第三方肖像、私人录音、孩子资料、账户或密钥。${plan.productMention === "none" ? "本条不植入产品宣传；工程使用工具不等于口播必须推荐工具。" : "OneTake 只作为本人正在做的工具实例；不把 AI 与录制工具混为同一种能力。"}\n\n当前状态：稿件与工程待本人试录；未证明观看效果，未录制、未导出、未发布。\n`);
 const escaped = JSON.stringify({ project, plan }).replace(/</g, "\\u003c");
 const htmlTitle = plan.title.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));

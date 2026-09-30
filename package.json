@@ -1,10 +1,11 @@
 {
   "name": "onetake-companion",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "OneTake local video workbench: editable projects and local media finishing",
   "license": "MIT",
   "private": true,
   "engines": { "node": ">=22" },
+  "dependencies": { "fflate": "^0.8.2" },
   "scripts": {
     "start": "node src/server.cjs",
     "launch": "node launcher.cjs",
