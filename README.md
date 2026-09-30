@@ -1,5 +1,15 @@
 # OneTake 口播视频工作台 / Video Workbench
 
+## 简介
+
+这是可独立运行、可研究和修改的本地视频工作台。创作者可免费手工设计口播或白板工程，也可填写自己的 MiniMax/GLM API Key 生成**待审核草稿**；工程可手动导入 OneTake。录像仍由 OneTake 网页或 App 完成。本工具还提供独立命令行：查看静音候选、按人工确认的剪切点导出，并将已准备好的 PNG 封面合入片头。它不上传录像到 OneTake 线上后端，也不会替用户发布视频。
+
+**用 [OneTake](https://onetake.show) 把想法录出来，用本地工作台整理工程和成片。** 更多功能正在测试和完善中，请以官网实际可用状态为准。这个开源工具可独立使用；网页内自动调用的官方粗剪和封面导出仍需本地配对及有效 PRO 授权。开源命令行不受 OneTake 订阅限制，自选模型的调用费用由模型服务商收取。
+
+首次使用请看[中文完整指南](USER_GUIDE.zh-CN.md)；接口、风险边界分别见 [API](API.md) 与 [安全说明](SECURITY.md)。当前是源码启动，不是已签名的桌面安装包；Windows 真机权限、线上网页联动和长视频稳定性仍需验证。**不要把真实 Key、配对码、私人录制或工程目录提交到此仓库。**
+
+## English Overview
+
 Lightweight local finishing tools for OneTake. No OneTake source checkout, web renderer, cloud media storage, or bundled model account required. ZIP publishing bundles use the MIT-licensed `fflate` dependency.
 
 For the complete creator workflow, pairing/editing steps, project recovery, and the exact migration boundary from the earlier assistant, see [中文使用指南](USER_GUIDE.zh-CN.md).
@@ -20,7 +30,7 @@ Start the launcher, then open `http://127.0.0.1:3010`. The same-origin local UI 
 
 The editor uses four tabs: script, cover/publication, import/video and advanced JSON. Scripts are edited one segment at a time with a selector and previous/next buttons. Switching tabs or segments retains in-memory edits; use Save Project to persist them. Model settings open separately in a dialog.
 
-Default library: `~/Documents/OneTake视频工作台` (override `ONETAKE_WORKSPACE_DIR`). Each UUID-indexed project holds the editable `content-plan.json`, portable `project.onetake.json`, script/source/publishing notes, a no-camera `preview.html`, `assets/`, `originals/`, `exports/` and `manifest.json`. Generated images are saved under `assets/` and embedded as image data in the portable talking-head project, so manual import does not depend on a local file path. The Import tab can move an entire project into the library's `.trash` folder for manual recovery; externally referenced Downloads originals are untouched. Individual generated images can also be removed from their segment.
+Default library: `~/Documents/OneTake视频工作台` (override `ONETAKE_WORKSPACE_DIR`). Each UUID-indexed project holds the editable `content-plan.json`, portable `project.onetake.json`, script/source/publishing notes, a no-camera `preview.html`, `assets/`, `originals/`, `exports/` and `manifest.json`. Generated images are saved under `assets/` and embedded as image data in the portable talking-head project, so manual import does not depend on a local file path. Each left-library item has a Delete action, also available in the Import tab. After confirmation it moves the project into the library's `.trash` folder for manual recovery; externally referenced Downloads originals are untouched. Individual generated images can also be removed from their segment.
 
 Known Downloads recordings are indexed by exact filename, size and modification time; they are **not copied**. If the browser original is not in the configured Downloads folder, the official editor sends it to loopback once, stores it under that project's `originals/`, then reuses its ID. Cover-only changes do not upload the video again. Originals are never moved out of Downloads or overwritten. Changed/moved files require re-selection. Covers and resulting MP4s are archived in the project's `exports/`; temporary output is removed after the saved export succeeds. The browser does not automatically fetch another full copy of the finished video.
 
@@ -64,6 +74,6 @@ Synthetic tests cover source independence, paired official-origin HTTP processin
 
 ## Open Source
 
-MIT for this source. FFmpeg is installed separately and has its own license/build conditions; no FFmpeg binary, fonts, recordings, keys or OneTake project data are distributed here. No GitHub repository has been published by this extraction.
+MIT for this source. FFmpeg is installed separately and has its own license/build conditions; no FFmpeg binary, fonts, recordings, keys or OneTake project data are distributed here. Source repository: [de8ug/onetake-companion](https://github.com/de8ug/onetake-companion).
 
-Built alongside [OneTake](https://onetake.show) by HaoGe AI Lab (浩哥 AI 实验室). Links and default output names are editable; no unremovable advertising overlay is inserted by Companion.
+Built alongside [OneTake](https://onetake.show) by HaoGe AI Lab (浩哥 AI 实验室). **Record with your own voice and picture; let the tool handle the repetitive local preparation.** More features are being tested and refined; check the site for availability. Links and default output names are editable; no unremovable advertising overlay is inserted by Companion.

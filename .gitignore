@@ -11,3 +11,10 @@ Downloads/
 *.mov
 *.webm
 .DS_Store
+config.env
+.onetake-pro/
+workspace/
+projects/
+originals/
+exports/
+publishing-bundle.zip

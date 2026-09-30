@@ -60,3 +60,26 @@ for (const mode of ["whiteboard", "talkinghead"]) {
     assert.equal(get("next-part").disabled, true);
   });
 }
+
+test("project list exposes a recoverable delete action without opening the project", async () => {
+  const { get, run } = editor("talkinghead");
+  run(`
+    const listedProject = { id: "00000000-0000-0000-0000-000000000001", title: "测试工程", mode: "talkinghead", state: "draft" };
+    let trashCalls = 0;
+    api = async (url) => {
+      if (url === "/workbench/projects") return { root: "/synthetic", projects: trashCalls ? [] : [listedProject] };
+      if (url.endsWith("/trash")) { trashCalls++; return { ok: true }; }
+      throw new Error("unexpected request");
+    };
+    ask = async () => true;
+  `);
+  await run("refresh()");
+  const row = get("project-list").children[0];
+  assert.equal(row.children[0].textContent, "测试工程");
+  assert.equal(row.children[1].textContent, "删除");
+  assert.equal(row.children[1].attributes["aria-label"], "删除工程：测试工程");
+  await row.children[1].onclick();
+  assert.equal(run("trashCalls"), 1);
+  assert.equal(get("project-list").children.length, 0);
+  assert.equal(get("editor").hidden, false);
+});

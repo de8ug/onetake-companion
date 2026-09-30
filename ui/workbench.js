@@ -173,10 +173,24 @@ async function refresh() {
   const result = await api("/workbench/projects");
   $("root-path").textContent = result.root; $("project-list").replaceChildren();
   for (const item of result.projects) {
+    const row = document.createElement("div"); row.className = "project-row";
     const button = document.createElement("button"); button.textContent = item.title; button.classList.toggle("active", item.id === project?.id);
+    button.className = `${button.className} project-select`.trim();
     const small = document.createElement("small"); small.textContent = `${item.mode === "whiteboard" ? "白板" : "口播"} · ${item.state === "draft" ? "待创作者确认" : item.state}`; button.append(small);
-    button.onclick = async () => { try { project = await api(`/workbench/projects/${item.id}`); showPlan(await api(`/workbench/projects/${item.id}/plan`), true); showFiles(); await refresh(); } catch(e) { notice(e.message, true); } }; $("project-list").append(button);
+    button.onclick = async () => { try { project = await api(`/workbench/projects/${item.id}`); showPlan(await api(`/workbench/projects/${item.id}/plan`), true); showFiles(); await refresh(); } catch(e) { notice(e.message, true); } };
+    const remove = document.createElement("button"); remove.className = "project-trash"; remove.type = "button"; remove.textContent = "删除";
+    remove.setAttribute("aria-label", `删除工程：${item.title}`); remove.title = "移到可恢复的工作台回收区";
+    remove.onclick = async () => { remove.disabled = true; try { await trashProject(item); } catch(e) { notice(e.message, true); } finally { remove.disabled = false; } };
+    row.append(button, remove); $("project-list").append(row);
   }
+}
+async function trashProject(item) {
+  if (!await ask(`把《${item.title}》整个工程移到工作台回收区？工程内的图片、原片副本和成片会一起移动；Downloads 中引用的原片不会删除。可从 .trash 目录手动恢复。当前未保存的修改不会保留。`)) return;
+  await api(`/workbench/projects/${item.id}/trash`, {});
+  if (project?.id === item.id) {
+    project = null; plan = null; $("editor").hidden = true; $("start").hidden = false;
+  }
+  await refresh(); notice("工程已移到工作台 .trash，可从该目录手动恢复；Downloads 原片未删除。");
 }
 function showFiles() {
   $("directory").textContent = project.directory || ""; $("saved").hidden = false;
@@ -214,10 +228,7 @@ action("download-bundle", async () => { if (!await ask("整理工程、已确认
 action("open-folder", async () => { await api(`/workbench/projects/${project.id}/open-folder`, {}); });
 action("trash-project", async () => {
   if (!project) return;
-  if (!await ask(`把《${project.title}》整个工程移到工作台回收区？工程内的图片、原片副本和成片会一起移动；Downloads 中引用的原片不会删除。可从 .trash 目录手动恢复。`)) return;
-  await api(`/workbench/projects/${project.id}/trash`, {});
-  project = null; plan = null; $("editor").hidden = true; $("start").hidden = false;
-  await refresh(); notice("工程已移到工作台 .trash，可从该目录手动恢复；Downloads 原片未删除。");
+  await trashProject(project);
 });
 $("recording-file").onchange = async e => { try { const file = e.target.files[0]; if (!file) return; await api("/workbench/recordings/register", { projectId: project.id, filename: file.name, size: file.size }); project = await api(`/workbench/projects/${project.id}`); showFiles(); notice("已关联本机原片，只发送名称和大小，没有传视频。"); } catch(e) { notice(e.message, true); } finally { e.target.value = ""; } };
 async function refreshModelStatus() {
