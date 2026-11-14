@@ -46,7 +46,7 @@ function createWorkspace(options = {}) {
     plan = validatePlan(plan);
     const folder = dir(id), pending = fs.mkdtempSync(path.join(folder, ".build-"));
     try {
-      const input = path.join(pending, "input.json"); writeJson(input, plan);
+      const input = path.join(pending, "input.json"); writeJson(input, { ...plan, projectId: id });
       await run(process.execPath, [path.join(__dirname, "build-project.cjs"), input, pending, path.join(folder, "assets")], { timeout: 15000, maxBuffer: 1024 * 1024 });
       for (const name of ["project.onetake.json", "content-plan.json", "录制稿与分镜.md", "图文发布词.md", "发布词.md", "来源与核验.md", "preview.html"]) {
         fs.renameSync(path.join(pending, name), path.join(folder, name));

@@ -53,7 +53,7 @@ Default: loopback `127.0.0.1:3010`, private state `~/.onetake-pro`. The local wo
 
 Create a private `config.env` in the state directory using `config.env.example` as a guide. On macOS/Linux, set permissions to 0600. Never place actual keys or tokens in this source checkout. The launcher reads only that private config, not OneTake's backend environment. Saved model settings override environment model values.
 
-For deployed OneTake pages, configure `ONETAKE_LICENSE_URL` to your real HTTPS validation endpoint. No production endpoint is guessed. Local development defaults to `http://127.0.0.1:3005/api/validate-session`. Add any custom website's exact origin to `ONETAKE_ALLOWED_ORIGINS`; never use wildcards. Browser local-network permission may also be required. HTTP tests do not prove every browser's permission policy.
+Official `https://onetake.show` / `https://www.onetake.show` pages use `https://api.onetake.show/api/validate-session`. Custom deployments must explicitly set their trusted HTTPS `ONETAKE_LICENSE_URL`. Local development defaults to `http://127.0.0.1:3005/api/validate-session`. Add any custom website's exact origin to `ONETAKE_ALLOWED_ORIGINS`; never use wildcards. Browser local-network permission may also be required. HTTP tests do not prove every browser's permission policy.
 
 ## Independent CLI
 
@@ -77,3 +77,11 @@ Synthetic tests cover source independence, paired official-origin HTTP processin
 MIT for this source. FFmpeg is installed separately and has its own license/build conditions; no FFmpeg binary, fonts, recordings, keys or OneTake project data are distributed here. Source repository: [de8ug/onetake-companion](https://github.com/de8ug/onetake-companion).
 
 Built alongside [OneTake](https://onetake.show) by HaoGe AI Lab (浩哥 AI 实验室). **Record with your own voice and picture; let the tool handle the repetitive local preparation.** More features are being tested and refined; check the site for availability. Links and default output names are editable; no unremovable advertising overlay is inserted by Companion.
+
+## Download / 下载
+
+[Download 0.5.0 startup ZIP](https://onetake.show/downloads/onetake-workbench-0.5.0.zip) · [SHA-256](https://onetake.show/downloads/onetake-workbench-0.5.0.sha256) · [Quick start](QUICKSTART.md). Requires Node.js 22+ and FFmpeg/ffprobe. Includes the locked ZIP runtime; no personal files or credentials.
+
+0.5.0 supports editable chapter labels, private prompt notes, bilingual authored captions with emphasis and dwell weights, cover palettes, and stable library project IDs. Generated assets remain embedded in portable talking-head projects for web and mobile. Captions follow planned timing, not speech recognition. Old drafts without captions remain supported.
+
+`node scripts/package-release.cjs /path/to/output` builds a source-allowlisted release. Never ZIP your private state or project library.

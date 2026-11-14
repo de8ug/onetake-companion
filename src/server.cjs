@@ -11,7 +11,7 @@ const { createWorkspace } = require("./workspace.cjs");
 const { generatePlan, seedPlan } = require("./project-generation.cjs");
 const { suggestQuote, suggestImagePrompt, generateMiniMaxImage } = require("./segment-assist.cjs");
 
-const VERSION = "0.4.0";
+const VERSION = require("../package.json").version;
 const DEFAULT_ORIGINS = "http://localhost:3001,http://127.0.0.1:3001,https://onetake.show,https://www.onetake.show";
 const isDevelopment = origin => {
   if (!origin) return true;
@@ -118,7 +118,7 @@ function createServer(options = {}) {
       if (url.pathname.startsWith("/quick-edit/")) {
       const license = req.headers["x-onetake-license"];
       if (typeof license !== "string" || !license.trim()) return reply(403, { message: "需要有效的 PRO 授权" });
-      const licenseUrl = options.licenseUrl || process.env.ONETAKE_LICENSE_URL || (isDevelopment(origin) ? "http://127.0.0.1:3005/api/validate-session" : "");
+      const licenseUrl = options.licenseUrl || process.env.ONETAKE_LICENSE_URL || (isDevelopment(origin) ? "http://127.0.0.1:3005/api/validate-session" : ["https://onetake.show", "https://www.onetake.show"].includes(origin) ? "https://api.onetake.show/api/validate-session" : "");
       if (!licenseUrl) return reply(503, { message: "本地助手尚未配置线上授权地址 ONETAKE_LICENSE_URL" });
       const target = new URL(licenseUrl);
       if (target.username || target.password || (target.protocol !== "https:" && !(target.protocol === "http:" && ["localhost", "127.0.0.1"].includes(target.hostname)))) return reply(503, { message: "授权地址必须使用 HTTPS；本机开发地址除外" });

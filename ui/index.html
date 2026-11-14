@@ -11,7 +11,7 @@
 <main><aside><div class="section-heading"><h2>工程</h2><button id="new-project">＋ 新建</button></div><nav id="project-list" aria-label="工程列表"></nav><p id="root-path" class="path"></p></aside>
 <article>
 <section id="start"><h1>新建工程</h1><form id="start-form">
- <div class="columns"><label>模式<select id="mode"><option value="talkinghead">口播</option><option value="whiteboard">白板</option></select></label><label>预计秒数<input id="seconds" type="number" value="90" min="30" max="600"></label></div>
+ <div class="columns"><label>模式<select id="mode"><option value="talkinghead">口播</option><option value="whiteboard">白板</option></select></label><label>AI 稿件语言<select id="language"><option value="zh">中文口播 · 英文字幕</option><option value="en">English · 中文字幕</option></select></label><label>预计秒数<input id="seconds" type="number" value="90" min="30" max="600"></label></div>
  <label>话题<input id="topic" required maxlength="100" placeholder="想跟观众聊什么？"></label><label>目标观众<input id="audience" required value="普通视频创作者" maxlength="500"></label>
  <label>叙事结构<select id="structure"><option value="problem">问题 → 例子 → 方法</option><option value="comparison">两种选择 → 差异 → 判断标准</option><option value="demonstration">真实任务 → 演示 → 边界与方法</option></select></label>
  <label>已有事实与材料<textarea id="notes" rows="4" maxlength="12000"></textarea></label><div class="actions"><button type="submit">手工模板</button><button id="generate" type="button">用我的模型生成</button></div>
@@ -30,7 +30,7 @@
  <div class="segment-toolbar"><button id="previous-part" aria-label="上一段">←</button><label>当前段落<select id="part-select"></select></label><button id="next-part" aria-label="下一段">→</button></div><div id="parts"></div>
  </section>
  <section id="panel-publication" role="tabpanel" aria-labelledby="tab-publication" hidden>
- <div class="columns"><label>封面大字<textarea id="cover-title" rows="2" maxlength="60"></textarea></label><label>封面说明<input id="cover-subtitle" maxlength="100"></label></div>
+ <div class="columns"><label>封面大字<textarea id="cover-title" rows="2" maxlength="60"></textarea></label><label>封面配色<select id="cover-background"><option value="light">简洁白</option><option value="ink">深墨色</option><option value="yellow">亮黄色</option></select></label><label>封面说明<input id="cover-subtitle" maxlength="100"></label></div>
  <h2>视频发布词</h2><label>描述<textarea id="description" rows="3" maxlength="2000"></textarea></label><label>四个关键词（用逗号分隔）<input id="keywords"></label>
  <h2>图文发布词</h2><label>描述<textarea id="image-description" rows="3" maxlength="2000"></textarea></label><label>四个关键词（用逗号分隔）<input id="image-keywords"></label>
  </section>

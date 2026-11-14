@@ -54,3 +54,23 @@ test("local UI is free, denies CSRF and exposes only origin-bound project ticket
     assert.equal((await fetch(`${base}/workbench/import`, { headers: { Origin: "http://127.0.0.1:3001", "X-OneTake-Import": token } })).status, 403);
   } finally { await new Promise(r => server.close(r)); fs.rmSync(tmp, { recursive: true, force: true }); }
 });
+
+test('official online origin uses official license endpoint; a FREE token cannot run editing', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'workbench-license-'));
+  const reserved = http.createServer(); await new Promise(r => reserved.listen(0, '127.0.0.1', r));
+  const port = reserved.address().port; await new Promise(r => reserved.close(r));
+  let called;
+  const home = path.join(tmp, 'home');
+  const { server } = createServer({ port, home, fetcher: async (url, options) => {
+    called = { url, method: options.method, redirect: options.redirect };
+    return { ok: true, json: async () => ({ valid: true, tier: 'FREE' }) };
+  }});
+  await new Promise(r => server.listen(port, '127.0.0.1', r));
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/quick-edit/analyze-silence`, { method: 'POST', headers: {
+      Origin: 'https://onetake.show', Authorization: 'Bearer ' + fs.readFileSync(path.join(home, 'pairing-token'), 'utf8').trim(), 'X-OneTake-License': 'synthetic-free-token', 'Content-Type': 'application/json'
+    }, body: '{}' });
+    assert.equal(response.status, 403);
+    assert.deepEqual(called, { url: 'https://api.onetake.show/api/validate-session', method: 'POST', redirect: 'error' });
+  } finally { await new Promise(r => server.close(r)); fs.rmSync(tmp, { recursive: true, force: true }); }
+});

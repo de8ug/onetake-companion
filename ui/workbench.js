@@ -41,7 +41,7 @@ function field(parent, label, value, change, multiline = false, type = "text") {
 }
 function syncJSON() { $("plan-json").value = JSON.stringify(plan, null, 2); }
 function readCommon() {
-  Object.assign(plan, { title: $("title").value, corePoint: $("core-point").value, coverTitle: $("cover-title").value, coverSubtitle: $("cover-subtitle").value });
+  Object.assign(plan, { title: $("title").value, corePoint: $("core-point").value, coverTitle: $("cover-title").value, coverSubtitle: $("cover-subtitle").value, coverBackground: $("cover-background").value });
   plan.publication = { description: $("description").value, keywords: $("keywords").value.split(/[,，]/).map(s => s.trim()).filter(Boolean) };
   plan.imagePublication = { description: $("image-description").value, keywords: $("image-keywords").value.split(/[,，]/).map(s => s.trim()).filter(Boolean) };
   syncJSON();
@@ -63,6 +63,7 @@ function showPlan(value, reset = false) {
   plan = value; $("start").hidden = true; $("editor").hidden = false;
   $("editor-heading").textContent = plan.mode === "whiteboard" ? "白板工程草稿" : "口播工程草稿";
   for (const [id, key] of [["title", "title"], ["core-point", "corePoint"], ["cover-title", "coverTitle"], ["cover-subtitle", "coverSubtitle"]]) $(id).value = plan[key] || "";
+  $("cover-background").value = plan.coverBackground || "light";
   $("description").value = plan.publication.description; $("keywords").value = plan.publication.keywords.join("，");
   $("image-description").value = (plan.imagePublication || plan.publication).description; $("image-keywords").value = (plan.imagePublication || plan.publication).keywords.join("，");
   renderPart();
@@ -92,6 +93,25 @@ function renderPart() {
     field(row, "口播词", part.text, v => { part.text = v; }, true);
     field(row, "预计秒数", part.seconds, v => { part.seconds = Number(v); }, false, "number");
     if (plan.mode === "talkinghead") {
+      field(row, "章节短标题（最多24字）", part.chapterTitle, v => { part.chapterTitle = v; });
+      field(row, "私用提纲（不进入成片）", part.promptNotes, v => { part.promptNotes = v; }, true);
+      const captions = document.createElement("details"); const summary = document.createElement("summary"); summary.textContent = "双语分句字幕与重点词"; captions.append(summary);
+      const hint = document.createElement("p"); hint.textContent = "按段内时长分配，不是语音识别。使用分句字幕时，网页/iPhone 用它替代重复金句。"; captions.append(hint);
+      if (!part.captions) part.captions = { mode: "off", lines: [] };
+      const captionMode = document.createElement("select"); captionMode.setAttribute("aria-label", "字幕展示方式");
+      for (const [value, label] of [["off", "关闭"], ["key", "重点句"], ["full", "全文分句"]]) { const option = document.createElement("option"); option.value = value; option.textContent = label; captionMode.append(option); }
+      captionMode.value = part.captions.mode; captionMode.onchange = () => { part.captions.mode = captionMode.value; syncJSON(); }; captions.append(captionMode);
+      part.captions.lines.forEach((line, index) => {
+        const box = document.createElement("section"); box.className = "caption-line";
+        field(box, `第 ${index + 1} 句原文`, line.text, v => { line.text = v; });
+        field(box, "另一语言译文", line.translation, v => { line.translation = v; });
+        field(box, "原文重点词", line.emphasis, v => { line.emphasis = v; });
+        field(box, "译文重点词", line.translationEmphasis, v => { line.translationEmphasis = v; });
+        field(box, "停留权重（0.5–2）", line.dwell ?? 1, v => { line.dwell = Number(v); }, false, "number");
+        const removeLine = document.createElement("button"); removeLine.textContent = "删除字幕句"; removeLine.onclick = () => { part.captions.lines.splice(index, 1); renderPart(); syncJSON(); }; box.append(removeLine); captions.append(box);
+      });
+      const addLine = document.createElement("button"); addLine.textContent = "添加字幕句"; addLine.disabled = part.captions.lines.length >= 30;
+      addLine.onclick = () => { part.captions.lines.push({ text: "待填写", translation: "", dwell: 1 }); if (part.captions.mode === "off") part.captions.mode = "key"; renderPart(); syncJSON(); }; captions.append(addLine); row.append(captions);
       field(row, "金句（可留空）", part.quote, v => { if (v) part.quote = v; else { delete part.quote; delete part.emphasis; } });
       field(row, "高亮词", part.emphasis, v => { part.emphasis = v; });
       const tools = document.createElement("div"); tools.className = "segment-tools";
@@ -199,8 +219,8 @@ function showFiles() {
     $(id).replaceChildren(); for (const item of items || []) { const li = document.createElement("li"); li.textContent = item.filename ? `原片：${item.filename} · ${item.kind === "downloads" ? "引用 Downloads，未复制" : "工程内原片"}` : `成片：${item.name} · 封面：${item.coverName}`; $(id).append(li); }
   }
 }
-function input() { return { mode: $("mode").value, topic: $("topic").value, audience: $("audience").value, notes: $("notes").value, structure: $("structure").value, seconds: Number($("seconds").value), provider: $("provider").value }; }
-$("start-form").onsubmit = async e => { e.preventDefault(); try { project = null; showPlan((await api("/workbench/seed", input())).plan, true); notice("手工草稿已准备；请编辑后保存。"); } catch(e) { notice(e.message, true); } };
+function input() { return { mode: $("mode").value, language: $("language").value, topic: $("topic").value, audience: $("audience").value, notes: $("notes").value, structure: $("structure").value, seconds: Number($("seconds").value), provider: $("provider").value }; }
+$("start-form").onsubmit = async e => { e.preventDefault(); try { project = null; showPlan((await api("/workbench/seed", input())).plan, true); notice("手工中文草稿已准备；请编辑后保存。语言选择用于 AI 生成。"); } catch(e) { notice(e.message, true); } };
 action("generate", async () => {
   if (!$("start-form").reportValidity()) return;
   if (!await ask("将话题、观众和材料发送给所选模型服务商，使用你自己的 API Key 并可能计费。请勿提交未公开资料。现在生成？")) return;
@@ -248,5 +268,5 @@ $("model-form").onsubmit = async e => {
   finally { button.disabled = false; }
 };
 $("new-project").onclick = async () => { if (plan && !await ask("离开当前草稿？请先保存需要保留的修改。")) return; project = null; plan = null; $("start").hidden = false; $("editor").hidden = true; notice(""); };
-for (const id of ["title", "core-point", "cover-title", "cover-subtitle", "description", "keywords", "image-description", "image-keywords"]) $(id).oninput = readCommon;
+for (const id of ["title", "core-point", "cover-title", "cover-subtitle", "cover-background", "description", "keywords", "image-description", "image-keywords"]) $(id).oninput = readCommon;
 refresh().catch(e => notice(e.message, true));
