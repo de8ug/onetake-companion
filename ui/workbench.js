@@ -313,3 +313,27 @@ async function receiveSource() {
   } catch (error) { notice(error.message, true); }
 }
 receiveSource();
+
+$("copy-contact").onclick = async () => {
+  try {
+    await navigator.clipboard.writeText("HaoAILab");
+    $("contact-status").textContent = "已复制，打开微信搜索添加";
+  } catch {
+    $("contact-status").textContent = "复制未成功，请在微信中搜索 HaoAILab";
+  }
+};
+
+function selectWorkspaceView(name) {
+  const editing = name === "edit";
+  $("workspace-view").hidden = editing;
+  $("video-edit-view").hidden = !editing;
+  $("nav-projects").setAttribute("aria-pressed", String(!editing));
+  $("nav-edit").setAttribute("aria-pressed", String(editing));
+}
+$("nav-projects").onclick = () => selectWorkspaceView("projects");
+$("nav-edit").onclick = () => selectWorkspaceView("edit");
+$("edit-target").onchange = () => {
+  const target = $("edit-target").value === "http://127.0.0.1:3001" ? "http://127.0.0.1:3001" : "https://onetake.show";
+  $("open-video-editor").href = target + "/?home=1&edit=1";
+};
+if (location.hash === "#edit") selectWorkspaceView("edit");

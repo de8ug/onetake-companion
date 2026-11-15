@@ -89,3 +89,7 @@ Built alongside [OneTake](https://onetake.show) by HaoGe AI Lab (浩哥 AI 实�
 ### Bring source materials from OneTake
 
 Import TXT/DOCX on the OneTake homepage, review your topic and selected images, then send them to the running local workbench. Pairing is required; receiving materials does not call AI. Generate with your own model after confirmation, assign reference images to segments, save, and import the portable project into OneTake. Reference images stay local and selected images are embedded in the exported project. See [the Chinese quick-start guide](QUICKSTART.md).
+
+### Resume an existing recording
+
+Choose **已有视频剪辑** (Edit an existing video) in the workbench navigation. It opens the shared OneTake editor at `https://onetake.show/?home=1&edit=1`; local development is selectable. Pick a previously saved MP4, MOV or WebM without recording again. The same local processing, pairing and official PRO checks apply. Source recordings remain intact; matching Downloads recordings are referenced locally. Other files may require one loopback transfer to the workbench, never to the online API. Project navigation retains in-memory edits.
