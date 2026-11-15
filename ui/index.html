@@ -3,7 +3,7 @@
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OneTake 口播视频工作台</title><link rel="stylesheet" href="/workbench.css"><script src="/workbench.js" defer></script></head>
 <body>
 <dialog id="confirmation"><form method="dialog"><h2>请确认</h2><p id="confirmation-message"></p><div class="actions"><button value="cancel">取消</button><button value="yes">继续</button></div></form></dialog>
-<header><div class="brand-heading"><strong>OneTake 口播视频工作台</strong><span>本地工程与视频</span></div><div class="brand-contact"><span>公众号：<b>浩哥 AI 实验室</b></span><span>交流与试用：添加微信 <b>HaoAILab</b></span><button id="copy-contact" type="button" aria-label="复制微信号 HaoAILab">复制微信号</button><span id="contact-status" role="status" aria-live="polite"></span></div><button id="settings-toggle">模型设置</button></header>
+<header><div class="brand-heading"><strong>OneTake 口播视频工作台</strong><span>本地工程与视频</span></div><div class="brand-contact"><span>公众号：<b>浩哥 AI 实验室</b></span><span>交流与试用：添加微信 <b>HaoAILab</b></span><button id="copy-contact" type="button" aria-label="复制微信号 HaoAILab">复制微信号</button><span id="contact-status" role="status" aria-live="polite"></span><details class="contact-qr"><summary>扫码添加微信</summary><a href="/haoailab-wechat.jpg" target="_blank" rel="noopener noreferrer"><img src="/haoailab-wechat.jpg" width="240" alt="HaoAILab 微信二维码，点击查看原图" loading="lazy"></a></details></div><button id="settings-toggle">模型设置</button></header>
 <nav class="workbench-nav" aria-label="工作台主导航"><button id="nav-projects" aria-pressed="true">工程与稿件</button><button id="nav-edit" aria-pressed="false">已有视频剪辑</button><a href="https://onetake.show/workbench-start.html" target="_blank" rel="noreferrer">使用帮助 ↗</a></nav>
 <p id="notice" role="status" aria-live="polite"></p>
 <dialog id="settings">
@@ -51,7 +51,7 @@
 <div class="edit-steps"><div><b>01 选择原片</b><p>MP4、MOV 或 WebM<br>不需要重新录制</p></div><div><b>02 检查剪点与封面</b><p>试听后决定删哪些空白<br>原片画面、上传图片或大字封面</p></div><div><b>03 导出到本机</b><p>保留原片，成片另存<br>完成后直接打开所在文件夹</p></div></div>
 <label>在哪里打开剪辑页<select id="edit-target"><option value="https://onetake.show">OneTake 官网</option><option value="http://127.0.0.1:3001">本地测试版 · 3001</option></select></label>
 <a id="open-video-editor" class="primary-link" href="https://onetake.show/?home=1&edit=1" target="_blank" rel="noopener noreferrer">打开剪辑页，选择已有视频 →</a>
-<p>会在新标签页打开 OneTake 的同一套剪辑工具，沿用该网页的 PRO 状态。第一次需要输入工作台配对码；未开通时可在剪辑页开通或激活。</p>
+<p>会在新标签页打开 OneTake 的同一套剪辑工具，使用 OneTake 邮箱账户的 PRO 权益。首次连接需要输入工作台配对码；会员登录失效时，回到 OneTake 用原邮箱重新登录即可。</p>
 <p class="path">请保留工作台运行。原片通常在「下载 / Downloads」中；也可选择其他目录或手机传来的文件。处理在这台电脑完成，不上传 OneTake 服务器。网页不能任意读取硬盘，需要你亲自选一次文件。当前单个文件最多 800 MB。</p>
 </section>
 <footer>OneTake · <a href="https://onetake.show" target="_blank" rel="noreferrer">onetake.show</a><span>工程准备免费 · 官方粗剪＋封面导出 PRO · 模型费用由服务商收取</span></footer>

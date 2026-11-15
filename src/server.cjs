@@ -63,10 +63,10 @@ function createServer(options = {}) {
       res.writeHead(204); return res.end();
     }
     const url = new URL(req.url, ownOrigin);
-    if (req.method === "GET" && ["/", "/workbench.js", "/workbench.css"].includes(url.pathname)) {
+    if (req.method === "GET" && ["/", "/workbench.js", "/workbench.css", "/haoailab-wechat.jpg"].includes(url.pathname)) {
       if (req.headers["sec-fetch-dest"] === "iframe") return reply(403, { message: "Embedding denied" });
       if (url.pathname === "/") res.setHeader("Set-Cookie", `onetake-workbench=${uiSession}; HttpOnly; SameSite=Strict; Path=/`);
-      res.writeHead(200, { "Content-Type": url.pathname === "/" ? "text/html; charset=utf-8" : url.pathname.endsWith(".js") ? "text/javascript; charset=utf-8" : "text/css; charset=utf-8", "Cache-Control": "no-store", "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; frame-ancestors 'none'; object-src 'none'; base-uri 'none'" });
+      res.writeHead(200, { "Content-Type": url.pathname === "/" ? "text/html; charset=utf-8" : url.pathname.endsWith(".js") ? "text/javascript; charset=utf-8" : url.pathname.endsWith(".jpg") ? "image/jpeg" : "text/css; charset=utf-8", "Cache-Control": "no-store", "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; frame-ancestors 'none'; object-src 'none'; base-uri 'none'" });
       return res.end(fs.readFileSync(path.join(__dirname, "../ui", url.pathname === "/" ? "index.html" : url.pathname.slice(1))));
     }
     if (req.method === "GET" && url.pathname === "/workbench/import") {

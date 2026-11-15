@@ -13,10 +13,10 @@ async function checkProLicense(fetcher, url, license) {
     return { status: 503, code: "PRO_VALIDATION_UNAVAILABLE", message: "会员验证服务返回异常，请稍后重试；无需重新激活" };
   }
   if (response.ok && data?.valid === true) {
-    return data.tier === "PRO" ? null : { status: 403, code: "PRO_REQUIRED", message: "当前网页会话不是 PRO，请在这个网页开通或激活已有 PRO；本地测试版与官网的登录状态分别保存" };
+    return data.tier === "PRO" ? null : { status: 403, code: "PRO_REQUIRED", message: "当前账户尚未开通 PRO，请在 OneTake 登录邮箱账户并兑换激活码" };
   }
   if (data?.valid === false && [401,403,200].includes(response.status)) {
-    return { status: 403, code: "PRO_SESSION_INVALID", message: "当前网页的会员登录已失效，请在这个网页恢复登录或重新激活已有 PRO；无需重新购买，原片已保留" };
+    return { status: 403, code: "PRO_SESSION_INVALID", message: "账户登录已失效，请回到 OneTake 用原邮箱重新登录；无需再次购买或兑换激活码，原片已保留" };
   }
   return { status: 503, code: "PRO_VALIDATION_UNAVAILABLE", message: "会员验证接口返回异常，请检查工作台授权地址后重试；无需重新激活" };
 }

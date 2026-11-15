@@ -18,6 +18,10 @@ test("local UI is free, denies CSRF and exposes only origin-bound project ticket
     assert.equal((await fetch(`${base}/workbench/projects`)).status, 401);
     const page = await fetch(base); assert.equal(page.status, 200);
     assert.match(await page.text(), /OneTake 口播视频工作台/);
+    const qr = await fetch(`${base}/haoailab-wechat.jpg`);
+    assert.equal(qr.status, 200);
+    assert.equal(qr.headers.get('content-type'), 'image/jpeg');
+    assert.deepEqual(Buffer.from(await qr.arrayBuffer()), fs.readFileSync(path.join(__dirname, '../ui/haoailab-wechat.jpg')));
     const cookie = page.headers.get("set-cookie").split(";")[0];
     const post = (url, data, origin = base) => fetch(base + url, { method: "POST", headers: { Cookie: cookie, Origin: origin, "Content-Type": "application/json" }, body: JSON.stringify(data) });
     assert.equal((await post("/workbench/seed", {}, "https://onetake.show")).status, 401);

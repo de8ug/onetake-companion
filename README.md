@@ -80,9 +80,9 @@ Built alongside [OneTake](https://onetake.show) by HaoGe AI Lab (浩哥 AI 实�
 
 ## Download / 下载
 
-[Download 0.5.3 startup ZIP](https://onetake.show/downloads/onetake-workbench-0.5.3.zip) · [SHA-256](https://onetake.show/downloads/onetake-workbench-0.5.3.sha256) · [Quick start](QUICKSTART.md). Requires Node.js 22+ and FFmpeg/ffprobe. Includes the locked ZIP runtime; no personal files or credentials.
+[Download 0.5.4 startup ZIP](https://onetake.show/downloads/onetake-workbench-0.5.4.zip) · [SHA-256](https://onetake.show/downloads/onetake-workbench-0.5.4.sha256) · [Quick start](QUICKSTART.md). Requires Node.js 22+ and FFmpeg/ffprobe. Includes the locked ZIP runtime; no personal files or credentials.
 
-0.5.3 supports editable chapter labels, private prompt notes, bilingual authored captions with emphasis and dwell weights, cover palettes, and stable library project IDs. Generated assets remain embedded in portable talking-head projects for web and mobile. Captions follow planned timing, not speech recognition. Old drafts without captions remain supported.
+0.5.4 adds unified-account PRO guidance and a copyable WeChat contact with the original QR image. Web account and cloud rollout availability is controlled by the OneTake service. It also supports editable chapter labels, private prompt notes, bilingual authored captions with emphasis and dwell weights, cover palettes, and stable library project IDs. Generated assets remain embedded in portable talking-head projects for web and mobile. Captions follow planned timing, not speech recognition. Old drafts without captions remain supported.
 
 `node scripts/package-release.cjs /path/to/output` builds a source-allowlisted release. Never ZIP your private state or project library.
 

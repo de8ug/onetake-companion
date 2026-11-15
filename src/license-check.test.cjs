@@ -15,3 +15,16 @@ test('outage, throttle and malformed response do not tell valid members to react
  const invalid=await checkProLicense(async()=>({status:200,ok:true,json:async()=>{throw Error('bad')}}),'https://example.test','synthetic');
  assert.equal(invalid.status,503);
 });
+
+test('opaque account session is forwarded unchanged only to configured validator',async()=>{
+ const token='A'.repeat(43); let seen;
+ const result=await checkProLicense(async(url,options)=>{seen={url,options};return {status:200,ok:true,json:async()=>({valid:true,tier:'PRO'})}},'https://example.test/api/validate-session',token);
+ assert.equal(result,null);assert.equal(seen.options.headers.Authorization,`Bearer ${token}`);assert.equal(seen.options.redirect,'error');
+});
+test('account logout and expired rights never authorize local processing',async()=>{
+ const expired=await check(200,{valid:true,tier:'FREE'});
+ assert.equal(expired.code,'PRO_REQUIRED');
+ const loggedOut=await check(401,{valid:false});
+ assert.equal(loggedOut.code,'PRO_SESSION_INVALID');
+ assert.match(loggedOut.message,/原邮箱重新登录/);
+});
