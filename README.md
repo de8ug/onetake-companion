@@ -80,8 +80,12 @@ Built alongside [OneTake](https://onetake.show) by HaoGe AI Lab (浩哥 AI 实�
 
 ## Download / 下载
 
-[Download 0.5.0 startup ZIP](https://onetake.show/downloads/onetake-workbench-0.5.0.zip) · [SHA-256](https://onetake.show/downloads/onetake-workbench-0.5.0.sha256) · [Quick start](QUICKSTART.md). Requires Node.js 22+ and FFmpeg/ffprobe. Includes the locked ZIP runtime; no personal files or credentials.
+[Download 0.5.1 startup ZIP](https://onetake.show/downloads/onetake-workbench-0.5.1.zip) · [SHA-256](https://onetake.show/downloads/onetake-workbench-0.5.1.sha256) · [Quick start](QUICKSTART.md). Requires Node.js 22+ and FFmpeg/ffprobe. Includes the locked ZIP runtime; no personal files or credentials.
 
-0.5.0 supports editable chapter labels, private prompt notes, bilingual authored captions with emphasis and dwell weights, cover palettes, and stable library project IDs. Generated assets remain embedded in portable talking-head projects for web and mobile. Captions follow planned timing, not speech recognition. Old drafts without captions remain supported.
+0.5.1 supports editable chapter labels, private prompt notes, bilingual authored captions with emphasis and dwell weights, cover palettes, and stable library project IDs. Generated assets remain embedded in portable talking-head projects for web and mobile. Captions follow planned timing, not speech recognition. Old drafts without captions remain supported.
 
 `node scripts/package-release.cjs /path/to/output` builds a source-allowlisted release. Never ZIP your private state or project library.
+
+### Bring source materials from OneTake
+
+Import TXT/DOCX on the OneTake homepage, review your topic and selected images, then send them to the running local workbench. Pairing is required; receiving materials does not call AI. Generate with your own model after confirmation, assign reference images to segments, save, and import the portable project into OneTake. Reference images stay local and selected images are embedded in the exported project. See [the Chinese quick-start guide](QUICKSTART.md).

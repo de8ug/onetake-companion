@@ -17,6 +17,7 @@ function editor(mode) {
   const nodes = new Map();
   const get = id => { if (!nodes.has(id)) nodes.set(id, new Element()); return nodes.get(id); };
   const context = vm.createContext({
+    location: { hash: "" },
     document: { getElementById: get, createElement: () => new Element(), createTextNode: text => text },
     fetch: async () => ({ ok: true, json: async () => ({ root: "/synthetic", projects: [] }) }),
     initialPlan: seedPlan(mode),

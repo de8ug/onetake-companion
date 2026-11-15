@@ -46,6 +46,18 @@ function createWorkspace(options = {}) {
     plan = validatePlan(plan);
     const folder = dir(id), pending = fs.mkdtempSync(path.join(folder, ".build-"));
     try {
+      for (const part of plan.segments || []) {
+        if (!part.referenceImageId) continue;
+        const image = plan.referenceMaterials.images.find(item => item.id === part.referenceImageId);
+        const bytes = Buffer.from(image.dataUrl.split(",")[1], "base64");
+        const hash = crypto.createHash("sha256").update(bytes).digest("hex").slice(0,32);
+        const uuid = `${hash.slice(0,8)}-${hash.slice(8,12)}-${hash.slice(12,16)}-${hash.slice(16,20)}-${hash.slice(20)}`;
+        const filename = `${uuid}.${image.dataUrl.startsWith("data:image/png;") ? "png" : "jpg"}`;
+        const file = path.join(folder, "assets", filename);
+        if (!fs.existsSync(file)) fs.writeFileSync(file, bytes, { flag: "wx", mode: 0o600 });
+        else if (!fs.lstatSync(file).isFile() || !fs.readFileSync(file).equals(bytes)) throw new Error("Reference asset conflict");
+        part.image = { filename, prompt: image.name || "Reference image" };
+      }
       const input = path.join(pending, "input.json"); writeJson(input, { ...plan, projectId: id });
       await run(process.execPath, [path.join(__dirname, "build-project.cjs"), input, pending, path.join(folder, "assets")], { timeout: 15000, maxBuffer: 1024 * 1024 });
       for (const name of ["project.onetake.json", "content-plan.json", "录制稿与分镜.md", "图文发布词.md", "发布词.md", "来源与核验.md", "preview.html"]) {
@@ -85,9 +97,9 @@ function createWorkspace(options = {}) {
     const file = path.join(dir(id), "assets", filename);
     const previous = part.image?.filename;
     fs.writeFileSync(file, image.bytes, { flag: "wx", mode: 0o600 });
-    try { part.image = { filename, prompt }; part.imagePrompt = prompt; await pack(plan, id); }
+    try { delete part.referenceImageId; part.image = { filename, prompt }; part.imagePrompt = prompt; await pack(plan, id); }
     catch (error) { fs.rmSync(file, { force: true }); throw error; }
-    if (previous && /^[a-f0-9-]{36}\.(png|jpg)$/.test(previous)) fs.rmSync(path.join(dir(id), "assets", previous), { force: true });
+    if (previous && !plan.segments.some(item => item.image?.filename === previous) && /^[a-f0-9-]{36}\.(png|jpg)$/.test(previous)) fs.rmSync(path.join(dir(id), "assets", previous), { force: true });
     return { filename, project: get(id) };
   }
   async function removeImage(id, partId) {
@@ -96,8 +108,9 @@ function createWorkspace(options = {}) {
     if (!part.image) throw new Error("这段没有图片");
     const filename = part.image.filename;
     delete part.image;
+    delete part.referenceImageId;
     await pack(plan, id);
-    fs.rmSync(path.join(dir(id), "assets", filename), { force: true });
+    if (!plan.segments.some(item => item.image?.filename === filename)) fs.rmSync(path.join(dir(id), "assets", filename), { force: true });
     return get(id);
   }
   function image(id, filename) {

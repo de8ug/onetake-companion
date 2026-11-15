@@ -1,3 +1,4 @@
+const { createSourceInbox } = require("./source-materials.cjs");
 const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -35,6 +36,7 @@ function createServer(options = {}) {
   const origins = new Set((options.origins || process.env.ONETAKE_ALLOWED_ORIGINS || DEFAULT_ORIGINS).split(",").map(x => x.trim()).filter(Boolean));
   let busy = false;
   let workspace;
+  const sourceInbox = createSourceInbox();
   const library = () => workspace || (workspace = createWorkspace({ root: options.workspaceRoot, downloads: options.downloads }));
   const uiSession = crypto.randomBytes(32).toString("hex");
   const authorize = value => {
@@ -103,7 +105,7 @@ function createServer(options = {}) {
         return reply(200, { ...library().get(id), directory: library().dir(id) });
       }
       if (url.pathname === "/jobs" || url.pathname.startsWith("/jobs/")) return reply(410, { message: "请用工作台或 Skill 生成工程；旧白板渲染实验不属于轻量工作台。原有项目文件未删除。" });
-      const routes = ["/quick-edit/analyze-silence", "/quick-edit/render", "/model-settings", "/talkinghead/script", "/talkinghead/broll", "/workbench/projects", "/workbench/generate", "/workbench/seed", "/workbench/recordings/register"];
+      const routes = ["/quick-edit/analyze-silence", "/quick-edit/render", "/model-settings", "/talkinghead/script", "/talkinghead/broll", "/workbench/projects", "/workbench/source-drafts", "/workbench/source-drafts/consume", "/workbench/generate", "/workbench/seed", "/workbench/recordings/register"];
       if (req.method !== "POST" || !routes.includes(url.pathname) && !projectRoute) return reply(404, { message: "Not found" });
       if (busy || hasActiveRender()) return reply(409, { message: "已有任务运行，请等待" });
       if (projectRoute?.[2] === "poster") {
@@ -132,13 +134,23 @@ function createServer(options = {}) {
       const chunks = []; let bytes = 0;
       for await (const chunk of req) {
         bytes += chunk.length;
-        if (bytes > 2 * 1024 * 1024) return reply(413, { message: "输入过长" });
+        if (bytes > 4 * 1024 * 1024) return reply(413, { message: "输入过长" });
         chunks.push(chunk);
       }
       let input;
       try { input = JSON.parse(Buffer.concat(chunks).toString("utf8")); }
       catch { return reply(400, { message: "JSON 输入无效" }); }
       if (!input || typeof input !== "object" || Array.isArray(input)) return reply(400, { message: "输入格式无效" });
+      if (url.pathname === "/workbench/source-drafts") {
+        if (!origin || origin === ownOrigin) return reply(403, { message: "OneTake origin required" });
+        try { return reply(200, { ticket: sourceInbox.put(input, origin) }); }
+        catch (error) { return reply(422, { message: error.message }); }
+      }
+      if (url.pathname === "/workbench/source-drafts/consume") {
+        if (!localUI) return reply(403, { message: "Local UI required" });
+        try { return reply(200, sourceInbox.consume(input.ticket)); }
+        catch (error) { return reply(410, { message: error.message }); }
+      }
       if (url.pathname === "/workbench/seed") return reply(200, { plan: seedPlan(input.mode === "whiteboard" ? "whiteboard" : "talkinghead", input.topic || "把想法讲清楚", input.audience || "普通视频创作者", input.structure) });
       if (url.pathname === "/workbench/generate") {
         try { return reply(200, await generatePlan(input, options.generate || textProvider.generate)); }

@@ -1,3 +1,4 @@
+const { validateMaterials } = require("./source-materials.cjs");
 const { validateCaptions } = require("./captions.cjs");
 const textProvider = require("./text-provider.cjs");
 
@@ -15,6 +16,7 @@ function validatePlan(plan) {
     sourceNotes: Array.isArray(plan.sourceNotes) && plan.sourceNotes.length ? plan.sourceNotes.slice(0, 20).map(x => text(x, "资料", 2000)) : ["AI 或手工草稿；事实及素材由创作者确认，未证明录制或观看效果。"],
     review: ["内容仍需创作者校对，结构校验不代表事实或传播效果。"],
   };
+  if (plan.referenceMaterials) result.referenceMaterials = validateMaterials(plan.referenceMaterials);
   const publication = plan.publication;
   if (!publication || !Array.isArray(publication.keywords) || publication.keywords.length !== 4 || new Set(publication.keywords).size !== 4) throw new Error("需四个不同关键词");
   result.publication = { description: text(publication.description, "发布词", 2000), keywords: publication.keywords.map(x => text(x, "关键词", 30)) };
@@ -41,6 +43,10 @@ function validatePlan(plan) {
       part.role = text(p.role || `第 ${index + 1} 段`, "段落名称", 100);
       if (p.quote) { part.quote = text(p.quote, "金句", 120); part.emphasis = typeof p.emphasis === "string" ? p.emphasis.slice(0, 40) : ""; if (part.emphasis && !part.quote.includes(part.emphasis)) throw new Error("重点词必须包含在金句中"); }
       if (p.imagePrompt !== undefined) part.imagePrompt = typeof p.imagePrompt === "string" ? p.imagePrompt.slice(0, 1500) : "";
+      if (p.referenceImageId) {
+        if (!result.referenceMaterials?.images.some(image => image.id === p.referenceImageId)) throw new Error("Unknown reference image");
+        part.referenceImageId = p.referenceImageId;
+      }
       if (p.image) {
         if (!p.image || typeof p.image !== "object" || !/^[a-f0-9-]{36}\.(png|jpg)$/.test(p.image.filename)) throw new Error("图片资源编号无效");
         part.image = { filename: p.image.filename, prompt: text(p.image.prompt, "图片提示词", 1500) };
@@ -85,7 +91,9 @@ function seedPlan(mode, topic = "把想法讲清楚", audience = "普通视频�
 async function generatePlan(input, generate = textProvider.generate) {
   if (!["minimax", "glm"].includes(input.provider) || !["talkinghead", "whiteboard"].includes(input.mode)) throw new Error("请选择模式和模型");
   const topic = text(input.topic, "话题", 500), audience = text(input.audience, "观众", 500);
-  const notes = typeof input.notes === "string" ? input.notes.slice(0, 12000) : "";
+  const materials = input.referenceMaterials ? validateMaterials(input.referenceMaterials) : undefined;
+  const notes = typeof input.notes === "string" ? input.notes : "";
+  if (notes.length > 20000) throw new Error("Reference text exceeds 20000 characters");
   const structure = { problem: "观众问题 → 具体例子 → 可执行方法", comparison: "两种选择 → 具体差异 → 选择标准", demonstration: "真实任务 → 操作过程 → 结果边界 → 可以复用的方法" }[input.structure] || "观众问题 → 具体例子 → 可执行方法";
   const sample = seedPlan(input.mode, topic, audience, input.structure);
   const messages = [
@@ -100,6 +108,7 @@ async function generatePlan(input, generate = textProvider.generate) {
   if (plan.language !== (input.language === "en" ? "en" : "zh")) throw new Error("模型返回了错误语言，请重试或手动编辑");
   if (plan.mode !== input.mode) throw new Error("模型返回了错误模式");
   if (plan.mode === "talkinghead" && plan.segments.some(part => !part.captions?.lines.length || part.captions.lines.some(line => !line.translation?.trim()))) throw new Error("模型未提供完整双语字幕，请重试或使用手工模板补充");
+  if (materials) plan.referenceMaterials = { ...materials, text: notes };
   return { plan, provider: input.provider, model: result.model };
 }
 

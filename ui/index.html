@@ -10,11 +10,11 @@
 </dialog>
 <main><aside><div class="section-heading"><h2>工程</h2><button id="new-project">＋ 新建</button></div><nav id="project-list" aria-label="工程列表"></nav><p id="root-path" class="path"></p></aside>
 <article>
-<section id="start"><h1>新建工程</h1><form id="start-form">
+<section id="start"><h1>新建工程</h1><p id="source-status" hidden></p><form id="start-form">
  <div class="columns"><label>模式<select id="mode"><option value="talkinghead">口播</option><option value="whiteboard">白板</option></select></label><label>AI 稿件语言<select id="language"><option value="zh">中文口播 · 英文字幕</option><option value="en">English · 中文字幕</option></select></label><label>预计秒数<input id="seconds" type="number" value="90" min="30" max="600"></label></div>
- <label>话题<input id="topic" required maxlength="100" placeholder="想跟观众聊什么？"></label><label>目标观众<input id="audience" required value="普通视频创作者" maxlength="500"></label>
+ <label>话题<input id="topic" required maxlength="500" placeholder="想跟观众聊什么？"></label><label>目标观众<input id="audience" required value="普通视频创作者" maxlength="500"></label>
  <label>叙事结构<select id="structure"><option value="problem">问题 → 例子 → 方法</option><option value="comparison">两种选择 → 差异 → 判断标准</option><option value="demonstration">真实任务 → 演示 → 边界与方法</option></select></label>
- <label>已有事实与材料<textarea id="notes" rows="4" maxlength="12000"></textarea></label><div class="actions"><button type="submit">手工模板</button><button id="generate" type="button">用我的模型生成</button></div>
+ <label>已有事实与材料<textarea id="notes" rows="4" maxlength="20000"></textarea></label><div class="actions"><button type="submit">手工模板</button><button id="generate" type="button">用我的模型生成</button></div>
 </form></section>
 <section id="editor" hidden>
  <div class="section-heading"><h1 id="editor-heading">工程草稿</h1><button id="save">保存工程</button></div>

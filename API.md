@@ -37,3 +37,9 @@ Only `/quick-edit/` processing POSTs require `X-OneTake-License` and a successfu
 Managed analysis uses `?projectId=<workspaceUUID>&filename=<encoded original name>`; the existing Downloads JSON hint is preferred, raw bytes are fallback. Render options include `workspaceProjectId` and the analysis `recordingId` to resolve persistent project sources and save exports/cover into the linked project. Unlinked clients remain compatible and export to Downloads. No request accepts a browser-supplied absolute filesystem path.
 
 Render headers: `X-OneTake-Cover-Bytes` (PNG prefix length), `X-OneTake-Video-Type`, `X-OneTake-Render-Options` (ASCII-safe JSON with cuts, recordingId/outputName as applicable). Upload limit 800 MB; PNG limit 8 MB; cut limit 100. Browser changes remain in OneTake, not this package. `/status` capabilities include `localMedia:true`, `personalKeyDrafting:true`, `legacyWhiteboard:false`; legacy project outputs are not enumerated.
+
+## Source-material handoff (0.5.1)
+
+`POST /workbench/source-drafts` accepts a paired, allowlisted OneTake origin with `{topic, materials:{text,images:[{id,name,dataUrl}]}}`. Topic ≤500 chars, text ≤20,000 chars, ≤24 PNG/JPEG images and ≤2,500,000 data-URL characters total. Request body ≤4 MiB. No provider calls or file writes occur. Returns a random 48-hex `ticket` for `/#source=<ticket>`.
+
+`POST /workbench/source-drafts/consume` accepts `{ticket}` only from the same-origin local UI session. Tickets expire after 10 minutes, consume once, and the inbox holds at most eight. They never contain model or pairing keys. `referenceMaterials` remains in the local content plan; selected segment `referenceImageId` values become embedded portable assets during packing. Text generation receives reference text, not image bytes.

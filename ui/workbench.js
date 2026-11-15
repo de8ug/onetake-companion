@@ -1,6 +1,6 @@
 "use strict";
 const $ = id => document.getElementById(id);
-let plan, project;
+let plan, project, referenceMaterials;
 let activePart = 0;
 const tabNames = ["script", "publication", "files", "json"];
 function selectTab(name, focus = false) {
@@ -149,7 +149,29 @@ function renderPart() {
       const ratio = document.createElement("select");
       for (const value of ["16:9", "9:16"]) { const option = document.createElement("option"); option.value = value; option.textContent = value; ratio.append(option); }
       ratioLabel.append(ratio); imageTools.append(ratioLabel); row.append(imageTools);
-      if (part.image && project) {
+      if (plan.referenceMaterials?.images?.length) {
+        const label = document.createElement("label"); label.textContent = "从导入资料中选图";
+        const select = document.createElement("select"); select.setAttribute("aria-label", "选择资料图片");
+        const empty = document.createElement("option"); empty.value = ""; empty.textContent = "暂不使用资料图"; select.append(empty);
+        for (const image of plan.referenceMaterials.images) {
+          const option = document.createElement("option"); option.value = image.id; option.textContent = image.name; select.append(option);
+        }
+        select.value = part.referenceImageId || "";
+        select.onchange = () => {
+          readCommon();
+          if (select.value) part.referenceImageId = select.value;
+          else { delete part.referenceImageId; delete part.image; }
+          showPlan(plan);
+        };
+        label.append(select); row.append(label);
+        const selected = plan.referenceMaterials.images.find(image => image.id === part.referenceImageId);
+        if (selected) {
+          const preview = document.createElement("div"); preview.className = "segment-image";
+          const img = document.createElement("img"); img.src = selected.dataUrl; img.alt = selected.name;
+          preview.append(img); row.append(preview);
+        }
+      }
+      if (part.image && project && !part.referenceImageId) {
         const preview = document.createElement("div"); preview.className = "segment-image";
         const img = document.createElement("img"); img.alt = `第 ${i + 1} 段生成的示意图`; img.src = `/workbench/projects/${project.id}/asset?name=${encodeURIComponent(part.image.filename)}`;
         preview.append(img);
@@ -219,8 +241,8 @@ function showFiles() {
     $(id).replaceChildren(); for (const item of items || []) { const li = document.createElement("li"); li.textContent = item.filename ? `原片：${item.filename} · ${item.kind === "downloads" ? "引用 Downloads，未复制" : "工程内原片"}` : `成片：${item.name} · 封面：${item.coverName}`; $(id).append(li); }
   }
 }
-function input() { return { mode: $("mode").value, language: $("language").value, topic: $("topic").value, audience: $("audience").value, notes: $("notes").value, structure: $("structure").value, seconds: Number($("seconds").value), provider: $("provider").value }; }
-$("start-form").onsubmit = async e => { e.preventDefault(); try { project = null; showPlan((await api("/workbench/seed", input())).plan, true); notice("手工中文草稿已准备；请编辑后保存。语言选择用于 AI 生成。"); } catch(e) { notice(e.message, true); } };
+function input() { return { mode: $("mode").value, language: $("language").value, topic: $("topic").value, audience: $("audience").value, notes: $("notes").value, referenceMaterials, structure: $("structure").value, seconds: Number($("seconds").value), provider: $("provider").value }; }
+$("start-form").onsubmit = async e => { e.preventDefault(); try { project = null; const seeded = (await api("/workbench/seed", input())).plan; if (referenceMaterials) seeded.referenceMaterials = { ...referenceMaterials, text: $("notes").value }; showPlan(seeded, true); notice("手工中文草稿已准备；请编辑后保存。语言选择用于 AI 生成。"); } catch(e) { notice(e.message, true); } };
 action("generate", async () => {
   if (!$("start-form").reportValidity()) return;
   if (!await ask("将话题、观众和材料发送给所选模型服务商，使用你自己的 API Key 并可能计费。请勿提交未公开资料。现在生成？")) return;
@@ -267,6 +289,27 @@ $("model-form").onsubmit = async e => {
   } catch (error) { $("model-result").textContent = error.message; $("model-result").classList.add("error"); }
   finally { button.disabled = false; }
 };
-$("new-project").onclick = async () => { if (plan && !await ask("离开当前草稿？请先保存需要保留的修改。")) return; project = null; plan = null; $("start").hidden = false; $("editor").hidden = true; notice(""); };
+$("new-project").onclick = async () => { if (plan && !await ask("离开当前草稿？请先保存需要保留的修改。")) return; project = null; plan = null; referenceMaterials = undefined; $("source-status").hidden = true; $("topic").value = ""; $("notes").value = ""; $("start").hidden = false; $("editor").hidden = true; notice(""); };
 for (const id of ["title", "core-point", "cover-title", "cover-subtitle", "cover-background", "description", "keywords", "image-description", "image-keywords"]) $(id).oninput = readCommon;
 refresh().catch(e => notice(e.message, true));
+
+async function receiveSource() {
+  const ticket = /^#source=([a-f0-9]{48})$/.exec(location.hash)?.[1];
+  if (!ticket) return;
+  if (!await ask("接收 OneTake 传来的创作目标、参考文字和已选图片？此时不会调用模型。")) return;
+  try {
+    const result = await api("/workbench/source-drafts/consume", { ticket });
+    referenceMaterials = result.materials;
+    $("topic").value = result.topic;
+    $("notes").value = referenceMaterials.text;
+    $("mode").value = "talkinghead";
+    const target = result.origin === "https://www.onetake.show" ? "https://onetake.show" : result.origin;
+    if ([...$("target").options].some(option => option.value === target)) $("target").value = target;
+    history.replaceState(null, "", location.pathname);
+    $("source-status").hidden = false;
+    $("source-status").textContent = `已带入参考文字和 ${referenceMaterials.images.length} 张图片。先确认话题与观众，再用自己的模型生成。图片留在本机，可在生成后的各段选择。`;
+    notice("资料已接收，尚未调用 AI。确认后点击“用我的模型生成”。");
+    $("topic").focus();
+  } catch (error) { notice(error.message, true); }
+}
+receiveSource();
