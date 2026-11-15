@@ -1,3 +1,4 @@
+const { checkProLicense } = require("./license-check.cjs");
 const { createSourceInbox } = require("./source-materials.cjs");
 const http = require("node:http");
 const fs = require("node:fs");
@@ -124,9 +125,8 @@ function createServer(options = {}) {
       if (!licenseUrl) return reply(503, { message: "本地助手尚未配置线上授权地址 ONETAKE_LICENSE_URL" });
       const target = new URL(licenseUrl);
       if (target.username || target.password || (target.protocol !== "https:" && !(target.protocol === "http:" && ["localhost", "127.0.0.1"].includes(target.hostname)))) return reply(503, { message: "授权地址必须使用 HTTPS；本机开发地址除外" });
-      const validation = await (options.fetcher || fetch)(licenseUrl, { method: "POST", redirect: "error", headers: { Authorization: `Bearer ${license}` }, signal: AbortSignal.timeout(8000) });
-      const valid = await validation.json();
-      if (!validation.ok || valid.valid !== true || valid.tier !== "PRO") return reply(403, { message: "PRO 授权无效，请重新激活" });
+      const failure = await checkProLicense(options.fetcher || fetch, licenseUrl, license);
+      if (failure) return reply(failure.status, { code: failure.code, message: failure.message });
       }
       if (busy || hasActiveRender()) return reply(409, { message: "已有任务运行，请等待" });
       busy = true; acquired = true;
