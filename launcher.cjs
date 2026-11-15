@@ -29,7 +29,7 @@ async function main() {
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("助手端口无效");
   if (!await running()) {
     try { require.resolve("fflate"); } catch { throw new Error("缺少 ZIP 依赖，请在工作台源码目录运行 npm ci"); }
-    for (const tool of ["ffmpeg", "ffprobe"]) if (spawnSync(tool, ["-version"], { stdio: "ignore" }).status !== 0) throw new Error(`缺少 ${tool}；请自行安装。启动器不自动安装软件。`);
+    for (const tool of ["ffmpeg", "ffprobe"]) if (spawnSync(tool, ["-version"], { stdio: "ignore" }).status !== 0) throw new Error(`缺少 ${tool}；请先按包内「00-第一次使用请先看.html」安装，再重新启动。`);
     const args = [];
     if (fs.existsSync(config)) {
       const stat = fs.lstatSync(config);
@@ -53,7 +53,7 @@ async function main() {
   spawnSync(opener[0], opener[1], { stdio: "ignore" });
   const file = path.join(home, "pairing-token");
   if (process.platform === "darwin") {
-    const result = spawnSync("osascript", ["-e", 'display dialog "独立本地助手已启动。复制配对码后，回到 OneTake 连接。" with title "OneTake Companion" buttons {"完成", "复制配对码"} default button "复制配对码"'], { encoding: "utf8" });
+    const result = spawnSync("osascript", ["-e", 'display dialog "OneTake 视频工作台已启动。需要网页联动时，复制配对码后回到 OneTake 连接。" with title "OneTake 视频工作台" buttons {"完成", "复制配对码"} default button "复制配对码"'], { encoding: "utf8" });
     if (result.stdout?.includes("复制配对码")) spawnSync("pbcopy", [], { input: fs.readFileSync(file) });
   } else if (process.platform === "win32") {
     spawnSync("clip", [], { input: fs.readFileSync(file) }); console.log("配对码已复制");

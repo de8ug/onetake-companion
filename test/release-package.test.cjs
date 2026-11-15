@@ -24,3 +24,28 @@ test('release ZIP extracts to a standalone runtime and contains no personal stat
   assert.equal(cli.status,0,cli.stderr);
  } finally { fs.rmSync(tmp,{recursive:true,force:true}); }
 });
+
+test('Mac starter survives ZIP extraction, Unicode/spaced paths and forwards launcher errors', () => {
+ if (process.platform !== 'darwin') return;
+ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'onetake launch test '));
+ try {
+  const run = spawnSync(process.execPath, [path.join(__dirname, '../scripts/package-release.cjs'), tmp], {encoding:'utf8'});
+  assert.equal(run.status, 0, run.stderr);
+  const archive = JSON.parse(run.stdout).file;
+  const dest = path.join(tmp, '中文 解压目录');
+  const extracted = spawnSync('/usr/bin/ditto', ['-x', '-k', archive, dest], {encoding:'utf8'});
+  assert.equal(extracted.status, 0, extracted.stderr);
+  const root = path.join(dest, 'onetake-workbench');
+  const entry = path.join(root, 'Mac 双击这里启动 OneTake.command');
+  assert(fs.statSync(entry).mode & 0o111, 'Finder launcher must remain executable after extraction');
+  assert(fs.existsSync(path.join(root, 'Windows 双击这里启动 OneTake.cmd')));
+  assert(fs.existsSync(path.join(root, '00-第一次使用请先看.html')));
+  // Exercise actual shell launch without starting a service, opening a browser or reading user state.
+  fs.writeFileSync(path.join(root, 'launcher.cjs'), 'console.log(JSON.stringify({cwd:process.cwd(),args:process.argv.slice(2)}));process.exitCode=7;');
+  const launched = spawnSync(entry, ['--check'], {cwd:tmp, encoding:'utf8'});
+  assert.equal(launched.status, 7, launched.stderr);
+  const result = JSON.parse(launched.stdout);
+  assert.equal(result.cwd, fs.realpathSync(root));
+  assert.deepEqual(result.args, ['--check']);
+ } finally {fs.rmSync(tmp, {recursive:true, force:true});}
+});

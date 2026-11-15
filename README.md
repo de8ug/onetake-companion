@@ -47,7 +47,7 @@ node launcher.cjs --check
 npm test
 ```
 
-macOS can use `start.command`; Windows can use `start.cmd`. Source-level Windows launch support is included but Windows devices and ACLs have not been verified. This is not a signed installer or bundled runtime.
+After extracting the complete ZIP, open `00-第一次使用请先看.html` for a visual guide. On macOS, double-click `Mac 双击这里启动 OneTake.command`; on Windows, double-click `Windows 双击这里启动 OneTake.cmd`. The old `start.command` / `start.cmd` entry points remain compatible. macOS may block this unsigned, unnotarized script: verify the official source, then review the file-specific “Open Anyway” option in System Settings → Privacy & Security ([Apple instructions](https://support.apple.com/en-us/102445)). Do not disable system-wide protection. Source-level Windows launch support is included but Windows devices and ACLs have not been verified. This is not a signed installer or bundled runtime.
 
 Default: loopback `127.0.0.1:3010`, private state `~/.onetake-pro`. The local workbench UI uses a private same-origin session; external full API access needs pairing. Official browser media processing also validates PRO with the existing license service. Optional model keys are not needed for video editing.
 
@@ -80,9 +80,9 @@ Built alongside [OneTake](https://onetake.show) by HaoGe AI Lab (浩哥 AI 实�
 
 ## Download / 下载
 
-[Download 0.5.1 startup ZIP](https://onetake.show/downloads/onetake-workbench-0.5.1.zip) · [SHA-256](https://onetake.show/downloads/onetake-workbench-0.5.1.sha256) · [Quick start](QUICKSTART.md). Requires Node.js 22+ and FFmpeg/ffprobe. Includes the locked ZIP runtime; no personal files or credentials.
+[Download 0.5.2 startup ZIP](https://onetake.show/downloads/onetake-workbench-0.5.2.zip) · [SHA-256](https://onetake.show/downloads/onetake-workbench-0.5.2.sha256) · [Quick start](QUICKSTART.md). Requires Node.js 22+ and FFmpeg/ffprobe. Includes the locked ZIP runtime; no personal files or credentials.
 
-0.5.1 supports editable chapter labels, private prompt notes, bilingual authored captions with emphasis and dwell weights, cover palettes, and stable library project IDs. Generated assets remain embedded in portable talking-head projects for web and mobile. Captions follow planned timing, not speech recognition. Old drafts without captions remain supported.
+0.5.2 supports editable chapter labels, private prompt notes, bilingual authored captions with emphasis and dwell weights, cover palettes, and stable library project IDs. Generated assets remain embedded in portable talking-head projects for web and mobile. Captions follow planned timing, not speech recognition. Old drafts without captions remain supported.
 
 `node scripts/package-release.cjs /path/to/output` builds a source-allowlisted release. Never ZIP your private state or project library.
 

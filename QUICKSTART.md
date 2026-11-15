@@ -1,11 +1,11 @@
-# OneTake 视频工作台 0.5.1
+# OneTake 视频工作台 0.5.2
 
 这是开源源码启动包，适用于 macOS、Windows 和 Linux；不是免环境安装器。已包含锁定版本的 ZIP 运行依赖及其 MIT 许可，不包含用户工程、视频、账号或 Key。
 
 ## 启动
 
 1. 安装 Node.js 22 或更新版本（https://nodejs.org/）以及 FFmpeg、ffprobe（https://ffmpeg.org/download.html），确保三个命令可在终端运行。
-2. 解压到固定目录。Mac 运行 `start.command`；Windows 运行 `start.cmd`；Linux 在目录中运行 `node launcher.cjs`。若 Mac 阻止双击，在终端切换到解压目录后运行 `bash start.command`，无需关闭系统安全保护。
+2. 解压整个 ZIP（Windows 请选「全部解压」），先双击 `00-第一次使用请先看.html` 看图文步骤。Mac 双击 `Mac 双击这里启动 OneTake.command`；Windows 双击 `Windows 双击这里启动 OneTake.cmd`；Linux 在目录中运行 `node launcher.cjs`。不要单独移动启动文件。Mac 遇到「Apple could not verify」时，确认官方来源后，到「系统设置 → 隐私与安全 → 仍要打开」确认该启动文件。详见 [Apple 官方说明](https://support.apple.com/zh-cn/102445)。不必关闭系统安全检查。
 3. 浏览器打开 http://127.0.0.1:3010 。启动器会检查依赖，不自动下载或安装软件。
 4. “我的模型”填写你自己的 API Key 并保存；没有 Key 也可使用手工模板。选模型、主题、语言，生成并编辑每段口播词、章节、提纲、双语字幕与重点词；可上传或生成图片。
 5. 保存工程，选择本地测试网址或 https://onetake.show ，点击导入。也可下载 `project.onetake.json` 手动导入网页或手机口播模式。白板工程供网页版使用。
